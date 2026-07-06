@@ -1,0 +1,293 @@
+\documentclass[11pt]{article}
+\usepackage{geometry}                
+\geometry{letterpaper,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in} 
+\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+%\graphicspath{{figures/}}
+
+\usepackage{natbib}
+ \bibpunct[, ]{(}{)}{,}{a}{}{,}%
+ \def\bibfont{\small}%
+ \def\bibsep{\smallskipamount}%
+ \def\bibhang{24pt}%
+ \def\newblock{\ }%
+ \def\BIBand{and}%
+
+
+\parskip = 0.1in
+
+\pagestyle{myheadings}
+%\markright{Sample \LaTeX\ file; taken from notes for IOE 519\hfill \copyright Marina A. Epelman\hfill}
+
+\DeclareMathOperator{\argmin}{argmin}
+\DeclareMathOperator{\argmax}{argmax}
+\newcommand{\prth}[1]{\left(#1\right)}
+\newcommand{\set}[1]{\left\{ #1 \right\}}
+\newcommand{\norm}[1]{\left \Vert #1 \right\Vert}
+\newcommand{\abs}[1]{\left \vert #1 \right\vert}
+\newcommand{\brac}[1]{\left[ #1 \right]}
+\newcommand{\bdef}{\stackrel{\triangle}{=}}
+\newcommand{\pf}{\textit{Proof: }}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\qed}{\rule{2mm}{3mm}}
+
+
+\newtheorem{theorem}{Theorem}%[section]
+\newtheorem{remark}{Remark}%[section]
+\newtheorem{definition}{Definition}%[section]
+\newtheorem{proposition}{Proposition}%[section]
+\newtheorem{lemma}{Lemma}%[section]
+\newtheorem{corollary}{Corollary}%[section]
+\newtheorem{assumption}{Assumption}
+\newtheorem{claim}{Claim}
+\newtheorem{exam}{Example}
+\newtheorem{prob}{Problem}
+
+\begin{document}
+\title{Distributionally Robust Optimization With Wasserstein Distance}
+%\author{\copyright Huajie Qian}
+\date{}
+\maketitle
+%**********************************
+We consider data-driven approaches to solving two optimization problems, a chance-constrained knapsack problem and a CVaR-constrained portfolio problem, based on distributionally robust formulations with Wasserstein distance, and investigate several validation schemes for selecting hyperparameters.
+
+\section{Optimization Problems}
+The chance-constrained (continuous) knapsack problem with $d$ items is
+\begin{equation}\label{ccp}
+\begin{aligned}
+& \underset{x}{\text{min}}
+& & c^Tx \\
+& \text{s.t.}
+& & P_F(\xi^Tx\leq b)\geq 1-\alpha\\
+&& & 0\leq x_l\leq 1\text{ for each }l=1,\ldots,d
+\end{aligned}
+\end{equation}
+where $c\in \R^d$ contains the losses of the items, $b\geq 0$ denotes the knapsack capacity, $x=(x_1,\ldots,x_d)\in\R^d$ is the decision, $\xi\in\R^d$ is a random vector that contains the item weights whose true joint distribution $F$ is unknown, and $1-\alpha$ is a given tolerance level (e.g., $90\%$). $P_F$ denotes the probability under the true distribution $F$.
+
+The CVaR-constrained portfolio problem with $d$ assets is
+\begin{equation}\label{cvar}
+\begin{aligned}
+& \underset{x}{\text{min}}
+& & c^Tx \\
+& \text{s.t.}
+& & \inf_{t\in\R}t+\frac{1}{\alpha}E_F[\text{max}\{-\xi^Tx-t,0\}]\leq \gamma\\
+&& & \sum_{l=1}^dx_l=1,x_l\geq 0\text{ for each }l=1,\ldots,d
+\end{aligned}
+\end{equation}
+where $c=-E_F[\xi]\in\R^d$ (assumed known) now contains the expected losses of the assets, $x=(x_1,\ldots,x_d)\in\R^d$ is the allocation, and $\xi\in\R^d$ is the random vector of asset returns with unknown joint distribution $F$. The left hand side of the constraint represents the $(1-\alpha)$-CVaR of the portfolio loss, and $\gamma$ is a given threshold for the CVaR. $E_F$ denotes the expectation under the true distribution $F$.
+
+\section{DRO with Wasserstein Distance}
+\subsection{Problem \eqref{ccp}}
+Let $\xi_1,\ldots,\xi_n$ be a set of i.i.d. observations of $\xi$, and $\hat F=\frac{1}{n}\sum_{i=1}^n\delta_{\xi_i}$ be the empirical distribution, where $\delta_{\xi}$ denotes the Dirac measure at $\xi$. The distributionally robust optimization (DRO) formulation for \eqref{ccp} based on Wasserstein distance takes the form
+\begin{equation}\label{robust ccp}
+\begin{aligned}
+& \underset{x}{\text{min}}
+& & c^Tx \\
+& \text{s.t.}
+& & \inf_{G\in \mathcal B(\hat F,\delta)}P_G(\xi^Tx\leq b)\geq 1-\alpha\\
+&& & 0\leq x_l\leq 1\text{ for each }l=1,\ldots,d
+\end{aligned}
+\end{equation}
+where $ \mathcal B(\hat F,\delta)$ is the Wasserstein ball of radius $\delta>0$ surrounding $\hat F$, i.e.
+\begin{equation*}
+\mathcal B(\hat F,\delta):=\{G:G\text{ is a probability distribution on }\R^d\text{ s.t. }d_w(G,\hat F)\leq \delta\}
+\end{equation*}
+with $d_w$ defined as
+\begin{equation*}
+d_w(G_1,G_2):=\inf\Big\{E_P[\Vert \xi-\xi'\Vert]:
+\begin{array}{l}
+P\text{ is a joint probability distribution of }(\xi,\xi')\in\R^d\times \R^d\\
+  \text{with marginals }G_1\text{ and }G_2\text{ for $\xi$ and $\xi'$ respectively}
+\end{array}
+\Big\}
+\end{equation*}
+where $\Vert\cdot \Vert$ is a norm on $\R^d$.
+
+\textbf{Exact Reformulation of \eqref{robust ccp}: }The distributionally robust chance constraint $Z:=\{x\in \R^d:\inf_{G\in \mathcal B(\hat F,\delta)}P_G(\xi^Tx\leq b)\geq 1-\alpha\}$ in \eqref{robust ccp}, if $b\geq 0$, has the following equivalent reformulation (Theorem 2 in \cite{xie2019distributionally})
+\begin{equation}\label{ccp:mixed integer}
+Z=\left\{x\in\R^d:\begin{array}{l}
+\delta v+ \frac{1}{n}\sum_{i=1}^nz_i\leq \alpha r\\
+r\leq z_i+s_i\text{ for }i=1,\ldots,n\\
+s_i\leq b-\xi_i^Tx+M(1-y_i)\text{ for }i=1,\ldots,n\\
+s_i\leq My_i\text{ for }i=1,\ldots,n\\
+\Vert x\Vert_*\leq v\\
+v\geq 0,r\geq 0, s_i\geq 0,z_i\geq 0,y_i\in\{0,1\}\text{ for }i=1,\ldots,n
+\end{array}\right\}
+\end{equation}
+where $\Vert\cdot \Vert_*$ is the dual norm of $\Vert \cdot \Vert$, and $M$ can be any number such that
+$$M\geq \max_{i=1,\ldots,n}\max_{\;\;x:\;0\leq x_l\leq 1\text{ for each }l}\abs{b-\xi_i^Tx}.$$
+For example, we can use $M=\abs{b} + \max_{i=1,\ldots,n}\Vert \xi_i\Vert_1$, with $\Vert \cdot\Vert_1$ denoting the $l_1$-norm. Therefore \eqref{robust ccp} can be solved as a mixed integer program (\cite{xie2019distributionally} uses solvers from Gurobi).
+
+\textbf{Convex Approximation of \eqref{robust ccp}: }The exact constraint \eqref{ccp:mixed integer} is usually non-convex. A convex approximation of \eqref{ccp:mixed integer} based on CVaR is the following (Theorem 6 in \cite{xie2019distributionally})
+\begin{equation}\label{ccp:cvar}
+Z_{CVaR}=\left\{x\in\R^d:\begin{array}{l}
+\delta v+ \frac{1}{n}\sum_{i=1}^nz_i\leq \alpha r\\
+r\leq z_i+b-\xi_i^Tx\text{ for }i=1,\ldots,n\\
+\Vert x\Vert_*\leq v\\
+v\geq 0,r\geq 0,z_i\geq 0\text{ for }i=1,\ldots,n
+\end{array}\right\}.
+\end{equation}
+It holds that $Z_{CVaR}\subseteq Z$, therefore a conservative convex approximation.
+
+\subsection{Problem \eqref{cvar}}
+The Wasserstein DRO formulation for \eqref{cvar} is
+\begin{equation}\label{robust cvar}
+\begin{aligned}
+& \underset{x}{\text{min}}
+& & c^Tx \\
+& \text{s.t.}
+& &\sup_{Q\in\mathcal B(\hat F,\delta)} \inf_{t\in\R}t+\frac{1}{\alpha}E_Q[\text{max}\{-\xi^Tx-t,0\}]\leq \gamma\\
+&& & \sum_{l=1}^dx_l=1,x_l\geq 0\text{ for each }l=1,\ldots,d
+\end{aligned}
+\end{equation}
+
+\textbf{Exact Reformulation of \eqref{robust cvar}: }The robust CVaR constraint $Z:=\{x\in\R^d:\sup_{Q\in\mathcal B(\hat F,\delta)} \inf_{t\in\R}t+\frac{1}{\alpha}E_Q[\text{max}\{-\xi^Tx-t,0\}]\leq \gamma\}$, which can be reformulated as (see the CVaR approximation \eqref{ccp:cvar} of \eqref{robust ccp}, or Corollary 5.1 in \cite{esfahani2018data})
+\begin{equation}\label{cvar:reformulation}
+Z=\left\{x\in\R^d:\begin{array}{l}
+\delta v+ \frac{1}{n}\sum_{i=1}^nz_i\leq \alpha r\\
+r\leq z_i+\gamma+\xi_i^Tx\text{ for }i=1,\ldots,n\\
+\Vert x\Vert_*\leq v\\
+v\geq 0,r\geq 0,z_i\geq 0\text{ for }i=1,\ldots,n
+\end{array}\right\}.
+\end{equation}
+
+
+
+\section{Validation Schemes}
+We consider three cross validation schemes to select the hyperparameter $\delta$, the radius of the Wasserstein ball.
+
+The three schemes are described in Algorithms \ref{kfold}-\ref{sectioning}, using the chance-constrained problem as an example. The CVaR-constrained problem can be validated in a similar way.
+\begin{algorithm}
+\caption{K-Fold Cross Validation}
+\label{kfold}
+\begin{algorithmic}
+\STATE {\textbf{Input:} $n$ observations $\Xi=\{\xi_1,\ldots,\xi_n\}$; a set of candidate parameter values $\{\delta_1,\ldots,\delta_m\}$; a confidence level $1-\beta$; number of folds $K$.}
+\vspace{1ex}
+\STATE\textbf{Procedure:}
+\vspace{1ex}
+\STATE 1. Randomly partition the data into $K$ subsets of equal size, $\Xi_k,k=1,\ldots,K$ such that each $\Xi_k$ contains $n/K$ data and $\Xi=\cup_{k=1}^K\Xi_k$.
+\STATE 2. For each $k=1,\ldots,K$ and each $j=1,\ldots,m$, use all the data except the $k$-th group to solve \eqref{robust ccp} with $\delta=\delta_j$ and $\hat F=\frac{K}{(K-1)n}\sum_{\xi\in\Xi\backslash \Xi_k}\delta_{\xi}$ to obtain its optimal solution $x^*_k(\delta_j)$, and then estimate the chance constraint $\hat P_k(\delta_j)=\frac{K}{n}\sum_{\xi\in \Xi_k}\mathbf{1}\{\xi^Tx^*_k(\delta_j)\leq b\}$.
+\STATE 3. Compute
+\begin{equation*}
+    \delta^* = \underset{\delta_j,1\leq j\leq m}\argmin\Big\{\frac{1}{K}\sum_{k=1}^Kc^Tx^*_k(\delta_j): \frac{\sum_{k=1}^K\mathbf{1}\{\hat P_k(\delta_j)\geq 1-\alpha\}}{K}\geq 1-\beta,j=1,\ldots,m\Big\}
+\end{equation*}
+\STATE 4. Use all the data $\Xi$ to resolve \eqref{robust ccp} with $\delta=\delta^*$ and $\hat F=\frac{1}{n}\sum_{i=1}^n\delta_{\xi_i}$ to obtain its optimal solution $x^*(\delta^*)$
+
+
+
+\vspace{1ex}
+\STATE {\textbf{Output:} The solution $x^*(\delta^*)$.}
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{Bootstrapping (Section 7.2.3 in \cite{esfahani2018data})}
+\label{bootstrap}
+\begin{algorithmic}
+\STATE {\textbf{Input:} $n$ observations $\Xi=\{\xi_1,\ldots,\xi_n\}$; a set of candidate parameter values $\{\delta_1,\ldots,\delta_m\}$; a confidence level $1-\beta$; number of bootstrap resamples $B$.}
+\vspace{1ex}
+\STATE\textbf{Procedure:}
+\vspace{1ex}
+\STATE 1. For each $b=1,\ldots,B$, uniformly draw $n$ data with replacement from the data set $\Xi$ to get the resampled data $\xi^b_1,\ldots,\xi^b_n$, and let $\Xi^c_b=\Xi\backslash\{\xi^b_1,\ldots,\xi^b_n\}$ be the remaining data that are not resampled.
+\STATE 2. For each $b=1,\ldots,B$ and each $j=1,\ldots,m$, use the $b$-th resample $\xi^b_1,\ldots,\xi^b_n$ to solve \eqref{robust ccp} with $\delta=\delta_j$ and $\hat F=\frac{1}{n}\sum_{i=1}^n\delta_{\xi^b_i}$ to obtain its optimal solution $x^*_b(\delta_j)$, and then estimate the chance constraint $\hat P_b(\delta_j)=\frac{1}{\mathrm{card}(\Xi^c_b)}\sum_{\xi\in \Xi^c_b}\mathbf{1}\{\xi^Tx^*_b(\delta_j)\leq b\}$, where $\mathrm{card}(\cdot)$ denotes the cardinality of a set.
+\STATE 3. Compute
+\begin{equation*}
+    \delta^* = \underset{\delta_j,1\leq j\leq m}\argmin\Big\{\frac{1}{B}\sum_{k=1}^Bc^Tx^*_b(\delta_j): \frac{\sum_{b=1}^B\mathbf{1}\{\hat P_b(\delta_j)\geq 1-\alpha\}}{B}\geq 1-\beta,j=1,\ldots,m\Big\}
+\end{equation*}
+\STATE 4. Use all the data $\Xi$ to resolve \eqref{robust ccp} with $\delta=\delta^*$ and $\hat F=\frac{1}{n}\sum_{i=1}^n\delta_{\xi_i}$ to obtain its optimal solution $x^*(\delta^*)$
+
+
+
+\vspace{1ex}
+\STATE {\textbf{Output:} The solution $x^*(\delta^*)$.}
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{Sectioning (Section 5.2 in \cite{xie2019distributionally})}
+\label{sectioning}
+\begin{algorithmic}
+\STATE {\textbf{Input:} $n$ observations $\Xi=\{\xi_1,\ldots,\xi_n\}$; training size $n_1$ and validation size $n_2$ ($n_1+n_2=n$); number of sections $K$; a set of candidate parameter values $\{\delta_1,\ldots,\delta_m\}$; a confidence level $1-\beta$.}
+\vspace{1ex}
+\STATE\textbf{Procedure:}
+\vspace{1ex}
+\STATE 1. Randomly split $\Xi$ into $\Xi_t$ and $\Xi_v$ such that $\mathrm{card}(\Xi_t)=n_1$ and $\mathrm{card}(\Xi_v)=n_2$, and further split $\Xi_v$ evenly into $\Xi_{v,k},k=1,\ldots,K$ such that $\mathrm{card}(\Xi_{v,k})=n_2/K$ for each $k$.
+\STATE 2. For each $j=1,\ldots,m$, use the training set $\Xi_t$ to solve \eqref{robust ccp} with $\delta=\delta_j$ and $\hat F=\frac{1}{n_1}\sum_{\xi\in\Xi_t}\delta_{\xi}$ to obtain its optimal solution $x^*(\delta_j)$, and then for each $k=1,\ldots,K$ estimate the chance constraint $\hat P_k(\delta_j)=\frac{1}{\mathrm{card}(\Xi_{v,k})}\sum_{\xi\in \Xi_{v,k}}\mathbf{1}\{\xi^Tx^*(\delta_j)\leq b\}$.
+\STATE 3. Compute
+\begin{equation*}
+    \delta^* = \underset{\delta_j,1\leq j\leq m}\argmin\Big\{c^Tx^*(\delta_j): \frac{\sum_{k=1}^K\mathbf{1}\{\hat P_k(\delta_j)\geq 1-\alpha\}}{K}\geq 1-\beta,j=1,\ldots,m\Big\}
+\end{equation*}
+
+
+
+\vspace{1ex}
+\STATE {\textbf{Output:} The solution $x^*(\delta^*)$.}
+\end{algorithmic}
+\end{algorithm}
+
+\section{To-Do List}
+1. Implement a function that takes in the radius $\delta$ and other problem parameters such as $c, b,1-\alpha$ etc., and outputs the optimal solution of \eqref{robust ccp}. The optimization is solved using either the mixed integer formulation \eqref{ccp:mixed integer} or the convex approximation \eqref{ccp:cvar}.
+
+2. Implement Algorithms \ref{kfold}-\ref{sectioning} to select the radius $\delta$.
+
+3. Repeat 1. and 2. for the CVaR-constrained portfolio problem \eqref{robust cvar}, using the robust reformulation \eqref{cvar:reformulation}.
+
+
+%\begin{algorithm}
+%\caption{K-Fold Cross Validation}
+%\label{marginal}
+%\begin{algorithmic}
+%\STATE {\textbf{Input:} $n$ observations $\{\xi_1,\ldots,\xi_n\}$; numbers of observations $n_1,n_2$ allocated to each phase such that $n_1+n_2=n$; a confidence level $1-\beta$; a data-driven reformulation with a (possibly multi-dimentional) parameter $s$ that lies in some space $\mathcal S$.}
+%\vspace{1ex}
+%\STATE\textbf{Procedure:}
+%\vspace{1ex}
+%\STATE\textit{Phase one:}
+%\STATE Use the first $n_1$ observations, $\{\xi_1,\ldots,\xi_{n_1}\}$, to construct the data-driven reformulation of \eqref{ccp} parametrized by $s\in\mathcal S$. Discretize $S$ as $\{s_1,\ldots,s_m\}$, and solve the reformulated problem to obtain the corresponding solutions $\{x^*(s_j)\vert j=1,\ldots,m\}$.
+%% \STATE {Compute $\bar{\psi}^b_{AV}=\frac{1}{R}\sum_{r=1}^R\tilde{\psi}_r(\widehat{F}_1^b,\ldots,\widehat{F}_m^b)$}
+%\vspace{1ex}
+%\STATE \textit{Phase two:}
+%\STATE \textbf{1.}~For each solution $x^*(s_j)$, use the remaining $n_2$ observations, $\{\xi_{n_1+1},\ldots,\xi_{n}\}$, to compute the sample mean $\hat P(x^*(s_j))=\frac{1}{n_2}\sum_{i=1}^{n_2}\mathbf{1}(\xi_{n_1+i}^Tx^*(s_j)\leq b)$ and the sample variance $\hat \sigma^2(x^*(s_j))=\hat P(x^*(s_j))(1-\hat P(x^*(s_j)))$.
+%\STATE \textbf{Method 1:}
+%\STATE \textbf{2.}~Compute an
+%\begin{equation}\label{calibrate}
+%    s^* \in \argmin\Big\{f(x^*(s_j))\Big\vert \hat P(x^*(s_j))\geq 1-\alpha + z_{1-\beta}\frac{\hat \sigma(x^*(s_j))}{\sqrt{n_2}},j=1,\ldots,m\Big\}
+%\end{equation}
+%where $z_{1-\beta}$ is the $1-\beta$ quantile of the standard normal.
+%%\vspace{0.3ex}
+%\STATE \textbf{Method 2:}
+%\STATE \textbf{2.}~Compute the sample covariance matrix $\hat \Sigma$ with $\hat \Sigma(j_1,j_2) = \frac{1}{n_2}\sum_{i=1}^{n_2}[\mathbf{1}(\xi_{n_1+i}^Tx^*(s_{j_1})\leq b)-\hat P(x^*(s_{j_1}))][\mathbf{1}(\xi_{n_1+i}^Tx^*(s_{j_2})\leq b)-\hat P(x^*(s_{j_2}))]$.
+%\STATE \textbf{3.}~Compute the $(1-\beta)$-quantile, $\hat q_{1-\beta}$, of
+%$$\max\Big\{Z_j/\hat \sigma(x^*(s_j))\Big\vert j=1,\ldots,m,\hat \sigma^2(x^*(s_j))>0\Big\}$$
+%where $(Z_1,\ldots,Z_m)$ follows multivariate normal with mean zero and covariance $\hat \Sigma$, and let
+%\begin{equation*}
+%    s^* \in \argmin\{f(x^*(s_j))\vert\hat P(x^*(s_j))\geq 1-\alpha + \hat q_{1-\beta}\frac{\hat \sigma(x^*(s_j))}{\sqrt{n_2}}, j=1,\ldots,m\}.
+%\end{equation*}
+%\STATE \textbf{Method 3:}
+%\STATE \textbf{2.}~Do the same as Method 2 Step 2.
+%\STATE \textbf{3.}~Compute the $(1-\beta)$-quantile, $\hat q^u_{1-\beta}$, of
+%$$\max\Big\{Z_j\Big\vert j=1,\ldots,m,\hat \sigma^2(x^*(s_j))>0\Big\}$$
+%where $(Z_1,\ldots,Z_m)$ follows multivariate normal with mean zero and covariance $\hat \Sigma$, and let
+%\begin{equation*}
+%    s^* \in \argmin\{f(x^*(s_j))\vert\hat P(x^*(s_j))\geq 1-\alpha + \frac{\hat q_{1-\beta}^u}{\sqrt{n_2}}, j=1,\ldots,m\}.
+%\end{equation*}
+%\STATE \textbf{Method 4:}
+%\STATE \textbf{2.}~Compute an
+%\begin{equation*}
+%    s^* \in \argmin\Big\{f(x^*(s_j))\Big\vert \hat P(x^*(s_j))\geq 1-\alpha,j=1,\ldots,m\Big\}.
+%\end{equation*}
+%
+%
+%\vspace{1ex}
+%\STATE {\textbf{Output:} the solution $x^*(s^*)$.}
+%\end{algorithmic}
+%\end{algorithm}
+
+
+\bibliographystyle{informs2014}
+\bibliography{reference}
+\end{document}
