@@ -1,0 +1,10 @@
+# Core numerics (required by every module)
+numpy
+scipy
+pandas
+
+# Optimization backends
+# - gurobipy also requires a valid Gurobi license
+gurobipy      # CCP_RO_ellipsoid, CCP_SO, CCP_SAA, CCP_DRO_wasserstein, knapsack, sca, fast
+cvxpy         # CCP_DRO_moment
+rsome         # mean_risk_portfolio_dro (portfolio_dro.py)

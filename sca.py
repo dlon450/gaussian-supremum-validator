@@ -1,3 +1,15 @@
+"""Safe convex approximation (SCA) of the chance constraint.
+
+Provides the Bonferroni/Nemirovski-style deterministic surrogate
+
+    mu^T x + sqrt(2 log(1/alpha)) * || Sigma^{1/2} x ||_2 <= b
+
+as a standalone baseline solver. Running the module prints the SCA solution
+under the true (half-normal) distribution.
+
+Run with:  python sca.py
+"""
+
 import numpy as np
 from gurobipy import Model, GRB, quicksum
 from numpy.linalg import eigh
@@ -67,18 +79,19 @@ def SCA_from_data(c, b, alpha, data, lb=0.0, ub=1.0, output_flag=0):
     sigma_hat = np.cov(data, rowvar=False)
     return SCA(c, b, alpha, mu_hat, sigma_hat, lb=lb, ub=ub, output_flag=output_flag)
 
-np.random.seed(2)
-d = 10
-alpha = 0.05
-beta = 0.1
-c = -np.ones(d)
-b = .833 * d
+if __name__ == "__main__":
+    np.random.seed(2)
+    d = 10
+    alpha = 0.05
+    beta = 0.1
+    c = -np.ones(d)
+    b = .833 * d
 
-mu_true = np.sqrt(2/np.pi) * np.ones(d)
-sigma_true = (1 - 2/np.pi) * np.eye(d)
-ksi_v = abs(np.random.normal(size = (1000000,d)))
-x_SCA_true = SCA(c, b, alpha, mu_true, sigma_true, lb=0.0, ub=1.0)
-obj_SCA_true = float(np.dot(c, x_SCA_true))
-P_hat_SCA_true = float(np.mean((ksi_v @ x_SCA_true) <= b))
-feasible_SCA_true = (P_hat_SCA_true >= 1 - alpha)
-print(f"SCA (true dist): obj {obj_SCA_true:.4f}, P_hat {P_hat_SCA_true:.4f}, feasible {feasible_SCA_true}")
+    mu_true = np.sqrt(2/np.pi) * np.ones(d)
+    sigma_true = (1 - 2/np.pi) * np.eye(d)
+    ksi_v = abs(np.random.normal(size = (1000000,d)))
+    x_SCA_true = SCA(c, b, alpha, mu_true, sigma_true, lb=0.0, ub=1.0)
+    obj_SCA_true = float(np.dot(c, x_SCA_true))
+    P_hat_SCA_true = float(np.mean((ksi_v @ x_SCA_true) <= b))
+    feasible_SCA_true = (P_hat_SCA_true >= 1 - alpha)
+    print(f"SCA (true dist): obj {obj_SCA_true:.4f}, P_hat {P_hat_SCA_true:.4f}, feasible {feasible_SCA_true}")

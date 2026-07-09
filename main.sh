@@ -7,9 +7,9 @@
 #SBATCH -c 4                      # The number of cpu cores to use
 #SBATCH -t 4-23:59                 # Runtime in D-HH:MM
 
-pip install gurobipy
- 
-#Command to execute Python program
+pip install -r requirements.txt
+
+# Command to execute Python program (run from the repository root)
 python dro_moment.py
- 
-#End of script
+
+# End of script

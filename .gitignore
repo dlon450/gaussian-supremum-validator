@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# OS / editor cruft
+.DS_Store
+
+# Gurobi logs
+*.log
+gurobi.log
+
+# Transient experiment outputs written to the repo root by the drivers.
+# Curated, paper-ready copies are committed under results/final/.
+/experiment_results_*.csv
+/objectives_*.csv
+/feas_levels_*.csv
+/fast_results.csv
