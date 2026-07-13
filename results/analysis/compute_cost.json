@@ -1,0 +1,53 @@
+[
+  {
+    "config": "paper_so",
+    "formulation": "so",
+    "n": 500,
+    "K": 10,
+    "two_phase_s": 2.94,
+    "two_phase_sd": 0.0,
+    "CV_s": 48.014,
+    "CV_sd": 0.193,
+    "BS_s": 58.774,
+    "BS_sd": 0.247,
+    "Sectioning_s": 2.925,
+    "Sectioning_sd": 0.017,
+    "CV/two_phase": 16.3,
+    "BS/two_phase": 20.0,
+    "Sectioning/two_phase": 1.0
+  },
+  {
+    "config": "paper_saa",
+    "formulation": "saa",
+    "n": 200,
+    "K": 10,
+    "two_phase_s": 1.569,
+    "two_phase_sd": 0.01,
+    "CV_s": 33.312,
+    "CV_sd": 0.089,
+    "BS_s": 29.559,
+    "BS_sd": 0.143,
+    "Sectioning_s": 1.727,
+    "Sectioning_sd": 0.011,
+    "CV/two_phase": 21.2,
+    "BS/two_phase": 18.8,
+    "Sectioning/two_phase": 1.1
+  },
+  {
+    "config": "paper_dro_wasserstein",
+    "formulation": "dro_wasserstein",
+    "n": 100,
+    "K": 10,
+    "two_phase_s": 3.8,
+    "two_phase_sd": 0.022,
+    "CV_s": 57.298,
+    "CV_sd": 0.246,
+    "BS_s": 53.087,
+    "BS_sd": 0.029,
+    "Sectioning_s": 2.537,
+    "Sectioning_sd": 0.008,
+    "CV/two_phase": 15.1,
+    "BS/two_phase": 14.0,
+    "Sectioning/two_phase": 0.7
+  }
+]

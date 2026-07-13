@@ -16,6 +16,7 @@ the paper's Section 6.4 comparison, at the same total data budget.
 from __future__ import annotations
 
 import time
+from dataclasses import replace
 import numpy as np
 
 from . import config as C, rng as RNG, dgp as D, oracle as O, paths as P, select as SEL, metrics as M
@@ -53,16 +54,41 @@ def V_solver_wass(para, c, b, data, alpha, d, n):
     return CCP_DRO_wasserstein(para, c, b, data, alpha, d, n)
 
 
-def run_replication(cfg_name, n, split, d, rep, include_existing=False):
-    """Execute one replication; return list of raw record dicts (one per method)."""
+def run_replication(cfg_name, n, split, d, rep, include_existing=False, folds=None, mesh_p=None,
+                    alpha=None, beta=None, dgp_params=None):
+    """Execute one replication; return list of raw record dicts (one per method).
+
+    ``folds`` (tuple of ints, e.g. (3, 5, 10)) sweeps the CV/bootstrap/sectioning
+    fold-count K, recording methods ``CV{K}``/``BS{K}``/``Sec{K}`` with per-scheme
+    deterministic seeding (each independent of the others). ``folds=None`` keeps the
+    legacy single-K=10 behavior (methods CV/BS/Sectioning) used by the ``existing``
+    matrix. ``mesh_p`` overrides the solution-path grid size (caps path solves for
+    wide sweeps of expensive formulations). ``alpha``/``beta`` override the
+    chance-constraint tolerance / target confidence; ``dgp_params`` (dict, may include
+    ``kind``) overrides the data-generating process (e.g. ``{'df': 3}`` for heavier
+    tails, ``{'corr': 0.5}`` for correlated coordinates). Overrides are keyed into the
+    RNG stream so each swept setting is an independent, reproducible experiment."""
+    from .config import DGP
+    _overridden = (alpha is not None) or (beta is not None) or bool(dgp_params)
     cfg = C.get_config(cfg_name)
+    if mesh_p is not None:
+        cfg = replace(cfg, mesh=replace(cfg.mesh, p=mesh_p))
+    if alpha is not None or beta is not None:
+        cfg = replace(cfg, alpha=alpha if alpha is not None else cfg.alpha,
+                      beta=beta if beta is not None else cfg.beta)
+    if dgp_params:
+        kind = dgp_params.get("kind", cfg.dgp.kind)
+        params = {**cfg.dgp.params, **{k: v for k, v in dgp_params.items() if k != "kind"}}
+        cfg = replace(cfg, dgp=DGP(kind, params))
     alpha, beta = cfg.alpha, cfg.beta
     b = cfg.b_factor * d
     c = cfg.c_value * np.ones(d)
     target = 1.0 - beta
     mu_true, sigma_true = D.moments(cfg.dgp, d)
     n1 = max(2, round(split * n)); n2 = n - n1
-    key = f"{cfg_name}:n{n}:s{split}:d{d}"
+    # override tag keeps swept settings on distinct RNG streams (reproducible, independent)
+    otag = f":a{alpha}:be{beta}:{cfg.dgp.kind}:{sorted(cfg.dgp.params.items())}" if _overridden else ""
+    key = f"{cfg_name}:n{n}:s{split}:d{d}{otag}"
     r = RNG.make_stream(cfg.base_seed, key, rep)
 
     def true_feas(x):
@@ -113,14 +139,29 @@ def run_replication(cfg_name, n, split, d, rep, include_existing=False):
       # ---- existing schemes (CV / bootstrap / sectioning) on simple-mesh formulations ----
       if include_existing and cfg.formulation in EXISTING_FORMULATIONS:
           cv_grid, bs_grid, solve = _existing_grid(cfg.formulation, alpha)
-          K = 10  # paper's best-performing fold/resample count
           delta = P.WASSERSTEIN_GRID if cfg.formulation == "dro_wasserstein" else np.arange(1, n + 1)
-          np.random.seed(RNG.stable_hash(key + f":{rep}", bits=31))  # existing validators use global RNG
-          for name, fn in [
-              ("CV", lambda: V.cross_validation(solve, delta, c, b, alpha, n, d, data, beta, K, param_grid=cv_grid)),
-              ("BS", lambda: V.bootstrapping(solve, delta, c, b, alpha, n, d, data, beta, K, param_grid=bs_grid)),
-              ("Sectioning", lambda: V.sectioning(solve, (cv_grid(n1) if cv_grid else delta), c, b, alpha, n, d, data, beta, n1, n2, K)),
-          ]:
+          if folds is None:
+              # legacy path (single K=10, names CV/BS/Sectioning): one seed per rep, sequential.
+              K = 10
+              np.random.seed(RNG.stable_hash(key + f":{rep}", bits=31))
+              schemes = [
+                  ("CV", lambda K=K: V.cross_validation(solve, delta, c, b, alpha, n, d, data, beta, K, param_grid=cv_grid)),
+                  ("BS", lambda K=K: V.bootstrapping(solve, delta, c, b, alpha, n, d, data, beta, K, param_grid=bs_grid)),
+                  ("Sectioning", lambda K=K: V.sectioning(solve, (cv_grid(n1) if cv_grid else delta), c, b, alpha, n, d, data, beta, n1, n2, K)),
+              ]
+          else:
+              # fold-sweep path: methods CV{K}/BS{K}/Sec{K}, each independently seeded
+              # (result of one scheme/K is independent of which others are run).
+              schemes = []
+              for K in folds:
+                  schemes += [
+                      (f"CV{K}", lambda K=K: V.cross_validation(solve, delta, c, b, alpha, n, d, data, beta, K, param_grid=cv_grid)),
+                      (f"BS{K}", lambda K=K: V.bootstrapping(solve, delta, c, b, alpha, n, d, data, beta, K, param_grid=bs_grid)),
+                      (f"Sec{K}", lambda K=K: V.sectioning(solve, (cv_grid(n1) if cv_grid else delta), c, b, alpha, n, d, data, beta, n1, n2, K)),
+                  ]
+          for name, fn in schemes:
+              if folds is not None:
+                  np.random.seed(RNG.stable_hash(key + f":{rep}:{name}", bits=31))  # per-scheme reproducibility
               try:
                   record(name, fn(), np.nan)   # per-scheme failure is isolated, not silently dropped for others
               except Exception as e:
@@ -136,13 +177,19 @@ def run_replication(cfg_name, n, split, d, rep, include_existing=False):
     return records
 
 
-def run_cell(cfg_name, n, split, d, reps, include_existing=False, workers=1):
-    """Run ``reps`` replications of one cell; return (raw_records, summaries_dict)."""
+def run_cell(cfg_name, n, split, d, reps, include_existing=False, workers=1, folds=None, mesh_p=None,
+             alpha=None, beta=None, dgp_params=None):
+    """Run ``reps`` replications of one cell; return (raw_records, summaries_dict).
+
+    ``folds``/``mesh_p``/``alpha``/``beta``/``dgp_params`` are forwarded to
+    :func:`run_replication` (fold-count sweep; path grid-size; tolerance/confidence/
+    DGP overrides)."""
     all_rows = []
+    args = (include_existing, folds, mesh_p, alpha, beta, dgp_params)
     if workers and workers > 1:
         import concurrent.futures as cf
         with cf.ProcessPoolExecutor(max_workers=workers) as ex:
-            futs = {ex.submit(run_replication, cfg_name, n, split, d, rep, include_existing): rep
+            futs = {ex.submit(run_replication, cfg_name, n, split, d, rep, *args): rep
                     for rep in range(reps)}
             for f in cf.as_completed(futs):
                 try:
@@ -151,10 +198,10 @@ def run_cell(cfg_name, n, split, d, reps, include_existing=False, workers=1):
                     all_rows.append({"method": "__error__", "rep": futs[f], "failed": 1.0, "error": str(e)[:200]})
     else:
         for rep in range(reps):
-            all_rows.extend(run_replication(cfg_name, n, split, d, rep, include_existing))
+            all_rows.extend(run_replication(cfg_name, n, split, d, rep, *args))
 
     cfg = C.get_config(cfg_name)
-    target = 1.0 - cfg.beta
+    target = 1.0 - (beta if beta is not None else cfg.beta)
     n_errors = sum(1 for r in all_rows if r["method"] == "__error__")
     method_rows = [r for r in all_rows if r["method"] != "__error__"]
     methods = sorted({r["method"] for r in method_rows},

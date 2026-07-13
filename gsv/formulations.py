@@ -135,6 +135,7 @@ def CCP_RO_ellipsoid(para, c, b, data, alpha, d, n):
     for k in range(mesh_size):
         model = Model()
         model.Params.OutputFlag = 0
+        model.Params.Threads = 1        # one solver thread per worker (avoid oversubscription)
         x_ro = model.addVars(d, lb=0, ub=1, vtype=GRB.CONTINUOUS, name="x_ro")
         model.setObjective(quicksum(c[j] * x_ro[j] for j in range(d)), GRB.MINIMIZE)
 
@@ -172,6 +173,7 @@ def CCP_SO(para, c, b, data, alpha, d, n):
     for k in range(mesh_size):
         model = Model()
         model.Params.OutputFlag = 0
+        model.Params.Threads = 1        # one solver thread per worker (avoid oversubscription)
         x_gen = model.addVars(d, lb=0, ub=1, vtype=GRB.CONTINUOUS, name="x_gen")
         model.setObjective(quicksum(c[j] * x_gen[j] for j in range(d)), GRB.MINIMIZE)
         for i in range(para[k]):
@@ -203,6 +205,10 @@ def CCP_SAA(para, c, b, data, alpha, d, n):
         else:
             model = Model()
             model.Params.OutputFlag = 0
+            model.Params.Threads = 1    # single-threaded: avoid oversubscription
+            model.Params.Seed = 0       # deterministic MILP search (reproducible across runs)
+            model.Params.MIPGap = 1e-2  # near-optimal is enough for the statistics
+            model.Params.TimeLimit = 5  # cap hard big-M instances (returns best incumbent)
 
             x_SAA = model.addVars(d, lb=0, ub=1, vtype=GRB.CONTINUOUS, name="x_SAA")
             z = model.addVars(n, vtype=GRB.BINARY, name="z")
@@ -240,6 +246,10 @@ def CCP_DRO_wasserstein(para, c, b, data, alpha, d, n):
     for k in range(mesh_size):
         model = Model("NewModel")
         model.Params.OutputFlag = 0
+        model.Params.Threads = 1        # single-threaded: avoid oversubscription
+        model.Params.Seed = 0           # deterministic MILP search (reproducible across runs)
+        model.Params.MIPGap = 1e-2      # near-optimal is enough for the statistics
+        model.Params.TimeLimit = 5      # cap hard big-M instances (returns best incumbent)
 
         y = {}
         z = {}
@@ -264,7 +274,12 @@ def CCP_DRO_wasserstein(para, c, b, data, alpha, d, n):
         model.addConstrs(v >= x[i] for i in range(d))
 
         model.optimize()
-        solution[:, k] = np.array([x[j].x for j in range(d)])
+        # under a TimeLimit an incumbent is virtually always found quickly; if not,
+        # fall back to the trivially feasible conservative solution x=0.
+        if model.SolCount > 0:
+            solution[:, k] = np.array([x[j].x for j in range(d)])
+        else:
+            solution[:, k] = np.zeros(d)
 
     return solution[:, 0] if scalar else solution
 

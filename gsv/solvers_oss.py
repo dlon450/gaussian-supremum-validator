@@ -19,6 +19,20 @@ from scipy.linalg import sqrtm
 __all__ = ["ro_ellipsoid", "so", "saa", "dro_wasserstein", "sca"]
 
 
+def _solve_socp(prob):
+    """Solve a convex SOCP, preferring the single-threaded ECOS to avoid the
+    massive thread oversubscription CLARABEL causes under many parallel workers
+    (RO d>=100 falls back here). Falls back to CLARABEL if ECOS is unavailable/fails."""
+    import cvxpy as cp
+    try:
+        prob.solve(solver=cp.ECOS)
+        if prob.status in ("optimal", "optimal_inaccurate"):
+            return
+    except Exception:
+        pass
+    prob.solve(solver=cp.CLARABEL)
+
+
 def sca(c, b, alpha, mu, sigma, lb=0.0, ub=1.0, output_flag=0):
     """SCA benchmark (true-moment SOCP), open-source drop-in for sca.SCA."""
     import cvxpy as cp
@@ -29,13 +43,17 @@ def sca(c, b, alpha, mu, sigma, lb=0.0, ub=1.0, output_flag=0):
     x = cp.Variable(d)
     prob = cp.Problem(cp.Minimize(c @ x),
                       [mu @ x + phi * cp.norm(root @ x, 2) <= b, x >= lb, x <= ub])
-    prob.solve(solver=cp.CLARABEL)
+    _solve_socp(prob)
     return x.value
 
 
 def _finish(sols, scalar):
     out = np.array(sols, dtype=float).T
-    return out[:, 0] if scalar else out
+    # Match the Gurobi formulations' convention: a single-parameter mesh returns a
+    # 1-D (d,) vector, not (d, 1). (The Gurobi solvers use `... else solution[:, 0]`.)
+    # Without this, a 1-element `para` (e.g. the SO_all benchmark passing [n]) that
+    # falls back to OSS at n>=2000 returns (d, 1) and breaks downstream `float(c @ x)`.
+    return out[:, 0] if (scalar or out.shape[1] == 1) else out
 
 
 def ro_ellipsoid(para, c, b, data, alpha, d, n):
@@ -49,7 +67,7 @@ def ro_ellipsoid(para, c, b, data, alpha, d, n):
         x = cp.Variable(d)
         prob = cp.Problem(cp.Minimize(c @ x),
                           [mu @ x + np.sqrt(s) * cp.norm(root @ x, 2) <= b, x >= 0, x <= 1])
-        prob.solve(solver=cp.CLARABEL)
+        _solve_socp(prob)
         sols.append(x.value)
     return _finish(sols, scalar)
 

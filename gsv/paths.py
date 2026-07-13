@@ -22,6 +22,18 @@ import gurobipy as gp
 from . import formulations as F
 from . import solvers_oss as OSS
 
+# The open-source conic solver (CLARABEL) spawns one thread per core, ignoring the
+# OMP/BLAS env caps -> catastrophic oversubscription when many workers each fall back
+# to it (e.g. RO d>=100, which exceeds the size-limited Gurobi license). Pin it to a
+# single thread. Guarded import so the module still loads without threadpoolctl.
+try:
+    from threadpoolctl import threadpool_limits
+except Exception:  # pragma: no cover
+    from contextlib import contextmanager
+    @contextmanager
+    def threadpool_limits(limits=None):
+        yield
+
 __all__ = ["build_path", "benchmark_solution", "WASSERSTEIN_GRID"]
 
 WASSERSTEIN_GRID = np.array([3 / 2 ** j for j in range(10)] + [(3 / 512) / 1.2 ** j for j in range(1, 16)])
@@ -36,7 +48,8 @@ def _solve(name, *args):
     try:
         return _GUROBI[name](*args)
     except gp.GurobiError:
-        return _OSS[name](*args)
+        with threadpool_limits(limits=1):     # cap CLARABEL/HiGHS oversubscription
+            return _OSS[name](*args)
 
 
 def _mahalanobis_quantile(data, alpha):
@@ -94,7 +107,29 @@ def build_path(formulation, data, c, b, alpha, d, n, mesh, rng=None):
         xx = np.stack([(1 - s) * x_o + s * x_fast for s in s_values], axis=1)
         return xx, s_values
 
+    if formulation == "dro_moment":
+        # Moment-based DRO (delta-method confidence region). The conservativeness
+        # parameter s is the uncertainty-set radius rho; the path spans 0..1.5*hat_s
+        # where hat_s = sqrt(chi2_{0.95, q}) is the benchmark's 95% radius over the
+        # q = d + d(d+1)/2 moment parameters (paper Section 6.2). SDP via cvxpy;
+        # thread-capped to avoid the conic-solver oversubscription.
+        from scipy.stats import chi2
+        p = mesh.p or 25
+        scale = float(mesh.params.get("scale", 1.5))
+        s_values = scale * _moment_chi2_radius(d) * np.arange(1, p + 1) / p
+        with threadpool_limits(limits=1):
+            xx = F.CCP_DRO_moment(s_values, c, b, data, alpha, d, n)
+        return xx, s_values
+
     raise ValueError(f"no path builder for formulation {formulation!r}")
+
+
+def _moment_chi2_radius(d: int) -> float:
+    """95% radius hat_s = sqrt(chi2_{0.95, q}) of the moment confidence region,
+    with q = d + d(d+1)/2 parameters (mean + lower-triangular second moments)."""
+    from scipy.stats import chi2
+    q = d + d * (d + 1) // 2
+    return float(np.sqrt(chi2.ppf(0.95, q)))
 
 
 def benchmark_solution(benchmark, *, c, b, alpha, d, mu_true, sigma_true, full_data, n1):
@@ -106,7 +141,8 @@ def benchmark_solution(benchmark, *, c, b, alpha, d, mu_true, sigma_true, full_d
             from sca import SCA                            # true-moment SCA (Gurobi)
             return SCA(c, b, alpha, mu_true, sigma_true, lb=0.0, ub=1.0, output_flag=0)
         except gp.GurobiError:
-            return OSS.sca(c, b, alpha, mu_true, sigma_true)
+            with threadpool_limits(limits=1):             # cap CLARABEL oversubscription
+                return OSS.sca(c, b, alpha, mu_true, sigma_true)
     if benchmark == "SO_all":
         n = full_data.shape[0]
         return _solve("so", np.array([n]), c, b, full_data, alpha, d, n)
@@ -114,5 +150,9 @@ def benchmark_solution(benchmark, *, c, b, alpha, d, mu_true, sigma_true, full_d
         from fast import SG_fast
         return SG_fast(c, b, full_data, N1=n1, output_flag=0)
     if benchmark == "chi2":
-        raise NotImplementedError("moment-DRO chi2 benchmark needs cvxpy (solver env)")
+        # literature calibration: rho = 95% radius of the moment confidence region
+        n = full_data.shape[0]
+        with threadpool_limits(limits=1):
+            x = F.CCP_DRO_moment(np.array([_moment_chi2_radius(d)]), c, b, full_data, alpha, d, n)
+        return np.asarray(x, float)
     raise ValueError(f"unknown benchmark {benchmark!r}")
