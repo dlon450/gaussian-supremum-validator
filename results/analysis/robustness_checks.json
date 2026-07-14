@@ -1,0 +1,173 @@
+{
+  "confirmation": [
+    {
+      "config": "paper_so",
+      "split": 0.5,
+      "method": "UG",
+      "in_cov": 0.972,
+      "out_cov": 0.952,
+      "out_cov_lo": 0.93
+    },
+    {
+      "config": "paper_so",
+      "split": 0.5,
+      "method": "NGS",
+      "in_cov": 0.994,
+      "out_cov": 0.99,
+      "out_cov_lo": 0.977
+    },
+    {
+      "config": "paper_so",
+      "split": 0.5,
+      "method": "UNGS",
+      "in_cov": 0.998,
+      "out_cov": 1.0,
+      "out_cov_lo": 0.992
+    },
+    {
+      "config": "paper_ro_ellipsoid",
+      "split": 0.3,
+      "method": "UG",
+      "in_cov": 0.996,
+      "out_cov": 0.992,
+      "out_cov_lo": 0.98
+    },
+    {
+      "config": "paper_ro_ellipsoid",
+      "split": 0.3,
+      "method": "NGS",
+      "in_cov": 1.0,
+      "out_cov": 0.998,
+      "out_cov_lo": 0.989
+    },
+    {
+      "config": "paper_ro_ellipsoid",
+      "split": 0.3,
+      "method": "UNGS",
+      "in_cov": 0.996,
+      "out_cov": 0.992,
+      "out_cov_lo": 0.98
+    },
+    {
+      "config": "paper_saa",
+      "split": 0.5,
+      "method": "UG",
+      "in_cov": 0.926,
+      "out_cov": 0.914,
+      "out_cov_lo": 0.886
+    },
+    {
+      "config": "paper_saa",
+      "split": 0.5,
+      "method": "NGS",
+      "in_cov": 0.988,
+      "out_cov": 0.988,
+      "out_cov_lo": 0.974
+    },
+    {
+      "config": "paper_saa",
+      "split": 0.5,
+      "method": "UNGS",
+      "in_cov": 0.988,
+      "out_cov": 0.992,
+      "out_cov_lo": 0.98
+    }
+  ],
+  "mesh_p": [
+    {
+      "mesh_p": 25,
+      "UG_cov": 0.99,
+      "NGS_cov": 0.993,
+      "UG_obj": -7.448
+    },
+    {
+      "mesh_p": 50,
+      "UG_cov": 0.983,
+      "NGS_cov": 0.993,
+      "UG_obj": -7.582
+    },
+    {
+      "mesh_p": 100,
+      "UG_cov": 0.963,
+      "NGS_cov": 0.997,
+      "UG_obj": -7.649
+    }
+  ],
+  "sim_num": [
+    {
+      "sim_num": 1000,
+      "qhat_mean": 2.1694,
+      "qhat_std": 0.0501
+    },
+    {
+      "sim_num": 2000,
+      "qhat_mean": 2.1683,
+      "qhat_std": 0.0498
+    },
+    {
+      "sim_num": 5000,
+      "qhat_mean": 2.1682,
+      "qhat_std": 0.0294
+    },
+    {
+      "sim_num": 10000,
+      "qhat_mean": 2.1767,
+      "qhat_std": 0.0197
+    }
+  ],
+  "neg_corr": [
+    {
+      "config": "paper_ro_ellipsoid",
+      "corr": -0.08,
+      "UG_cov": 0.993,
+      "NGS_cov": 1.0,
+      "UNGS_cov": 0.993
+    },
+    {
+      "config": "paper_ro_ellipsoid",
+      "corr": 0.0,
+      "UG_cov": 0.99,
+      "NGS_cov": 0.997,
+      "UNGS_cov": 0.99
+    },
+    {
+      "config": "paper_so",
+      "corr": -0.08,
+      "UG_cov": 0.97,
+      "NGS_cov": 0.997,
+      "UNGS_cov": 1.0
+    },
+    {
+      "config": "paper_so",
+      "corr": 0.0,
+      "UG_cov": 0.98,
+      "NGS_cov": 0.997,
+      "UNGS_cov": 1.0
+    },
+    {
+      "config": "paper_saa",
+      "corr": -0.08,
+      "UG_cov": 0.923,
+      "NGS_cov": 0.987,
+      "UNGS_cov": 0.993
+    },
+    {
+      "config": "paper_saa",
+      "corr": 0.0,
+      "UG_cov": 0.94,
+      "NGS_cov": 0.993,
+      "UNGS_cov": 0.99
+    }
+  ],
+  "_provenance": {
+    "git_commit": "d34ff2286f94f415327062e8df3721cd49ec3996",
+    "git_dirty": true,
+    "versions": {
+      "numpy": "2.5.1",
+      "scipy": "1.18.0",
+      "cvxpy": "1.9.2",
+      "gurobipy": "13.0.2"
+    },
+    "timestamp": null
+  }
+}

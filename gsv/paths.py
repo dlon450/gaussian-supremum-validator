@@ -17,7 +17,14 @@ Meshes follow the manuscript (author-confirmed, moderate p):
 from __future__ import annotations
 
 import numpy as np
-import gurobipy as gp
+try:
+    import gurobipy as gp
+    _HAS_GUROBI = True
+    _GErr = gp.GurobiError
+except Exception:                        # Gurobi optional: fall back to OSS backend
+    _HAS_GUROBI = False
+    class _GErr(Exception):
+        pass
 
 from . import formulations as F
 from . import solvers_oss as OSS
@@ -45,11 +52,13 @@ _OSS = {"ro": OSS.ro_ellipsoid, "so": OSS.so, "saa": OSS.saa, "wass": OSS.dro_wa
 
 
 def _solve(name, *args):
-    try:
-        return _GUROBI[name](*args)
-    except gp.GurobiError:
-        with threadpool_limits(limits=1):     # cap CLARABEL/HiGHS oversubscription
-            return _OSS[name](*args)
+    if _HAS_GUROBI:
+        try:
+            return _GUROBI[name](*args)
+        except _GErr:                          # size-limited license -> OSS backend
+            pass
+    with threadpool_limits(limits=1):          # cap CLARABEL/HiGHS oversubscription
+        return _OSS[name](*args)
 
 
 def _mahalanobis_quantile(data, alpha):
@@ -113,10 +122,12 @@ def build_path(formulation, data, c, b, alpha, d, n, mesh, rng=None):
         # where hat_s = sqrt(chi2_{0.95, q}) is the benchmark's 95% radius over the
         # q = d + d(d+1)/2 moment parameters (paper Section 6.2). SDP via cvxpy;
         # thread-capped to avoid the conic-solver oversubscription.
-        from scipy.stats import chi2
         p = mesh.p or 25
         scale = float(mesh.params.get("scale", 1.5))
-        s_values = scale * _moment_chi2_radius(d) * np.arange(1, p + 1) / p
+        # radius uses the moment-estimation sample size n (= n1 here). Include s=0
+        # (moments as equalities) at the aggressive end of the path.
+        rho95 = _moment_chi2_radius(d, n)
+        s_values = np.concatenate([[0.0], scale * rho95 * np.arange(1, p + 1) / p])
         with threadpool_limits(limits=1):
             xx = F.CCP_DRO_moment(s_values, c, b, data, alpha, d, n)
         return xx, s_values
@@ -124,12 +135,15 @@ def build_path(formulation, data, c, b, alpha, d, n, mesh, rng=None):
     raise ValueError(f"no path builder for formulation {formulation!r}")
 
 
-def _moment_chi2_radius(d: int) -> float:
-    """95% radius hat_s = sqrt(chi2_{0.95, q}) of the moment confidence region,
-    with q = d + d(d+1)/2 parameters (mean + lower-triangular second moments)."""
+def _moment_chi2_radius(d: int, n: int) -> float:
+    """95% radius hat_s = sqrt(chi2_{0.95, q} / n) of the delta-method moment
+    confidence region over q = d + d(d+1)/2 parameters (mean + lower-triangular
+    second moments). The 1/sqrt(n) factor scales the single-observation moment
+    covariance V_est to the covariance of the sample-mean moment estimate; it
+    matches the legacy implementation (DRO2.m: rho = sqrt(chi2inv(1-beta,q)/N))."""
     from scipy.stats import chi2
     q = d + d * (d + 1) // 2
-    return float(np.sqrt(chi2.ppf(0.95, q)))
+    return float(np.sqrt(chi2.ppf(0.95, q) / n))
 
 
 def benchmark_solution(benchmark, *, c, b, alpha, d, mu_true, sigma_true, full_data, n1):
@@ -137,12 +151,14 @@ def benchmark_solution(benchmark, *, c, b, alpha, d, mu_true, sigma_true, full_d
     if benchmark is None:
         return None
     if benchmark == "SCA":
-        try:
-            from sca import SCA                            # true-moment SCA (Gurobi)
-            return SCA(c, b, alpha, mu_true, sigma_true, lb=0.0, ub=1.0, output_flag=0)
-        except gp.GurobiError:
-            with threadpool_limits(limits=1):             # cap CLARABEL oversubscription
-                return OSS.sca(c, b, alpha, mu_true, sigma_true)
+        if _HAS_GUROBI:
+            try:
+                from sca import SCA                        # true-moment SCA (Gurobi)
+                return SCA(c, b, alpha, mu_true, sigma_true, lb=0.0, ub=1.0, output_flag=0)
+            except _GErr:
+                pass
+        with threadpool_limits(limits=1):                 # cap CLARABEL oversubscription
+            return OSS.sca(c, b, alpha, mu_true, sigma_true)
     if benchmark == "SO_all":
         n = full_data.shape[0]
         return _solve("so", np.array([n]), c, b, full_data, alpha, d, n)
@@ -150,9 +166,10 @@ def benchmark_solution(benchmark, *, c, b, alpha, d, mu_true, sigma_true, full_d
         from fast import SG_fast
         return SG_fast(c, b, full_data, N1=n1, output_flag=0)
     if benchmark == "chi2":
-        # literature calibration: rho = 95% radius of the moment confidence region
+        # literature calibration: rho = 95% radius of the moment confidence region,
+        # estimated from all n observations (delta-method, sqrt(chi2/n)).
         n = full_data.shape[0]
         with threadpool_limits(limits=1):
-            x = F.CCP_DRO_moment(np.array([_moment_chi2_radius(d)]), c, b, full_data, alpha, d, n)
+            x = F.CCP_DRO_moment(np.array([_moment_chi2_radius(d, n)]), c, b, full_data, alpha, d, n)
         return np.asarray(x, float)
     raise ValueError(f"unknown benchmark {benchmark!r}")

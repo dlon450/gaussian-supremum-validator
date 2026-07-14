@@ -4,23 +4,24 @@ Config: alpha=0.10 (tolerance 90%), beta=0.05 (target coverage 0.95); Gaussian D
 
 ## Best Phase-1 fraction n1/n vs N and D (budget matrix)
 
-For each (formulation, N, D) and validator, the FEASIBLE BAND is the set of n1 fractions with coverage >= 0.95; the RECOMMENDED n1 is the feasible fraction with the lowest (best) objective (ties -> smallest n1).
+CI-AWARE criterion: a fraction is FEASIBLE only if its 95% Wilson lower bound clears 0.95 (coverage_lo >= 0.95), not merely the point estimate — this avoids the selection optimism the audit flagged. The RECOMMENDED n1 is the CI-feasible fraction with the best objective (ties -> smallest n1). `borderline` counts fractions whose point coverage >= 0.95 but whose CI still crosses 0.95.
+
+Borderline (point>=0.95 but CI crosses) across budget cells: 57.
 
 
 ### Recommended n1 (best feasible), UG
 
 ```
-n               100   200   400   500   1000
-formulation d                               
-RO          2    NaN   0.3   NaN   0.2   0.2
-            10   NaN   0.1   NaN   0.2   0.1
-            50   NaN   0.1   NaN   0.1   0.1
-SAA         5    NaN   NaN   0.3   NaN   NaN
-SO          2    NaN   0.3   NaN   0.1   0.1
-            10   NaN   NaN   NaN   0.2   0.1
-            50   NaN   NaN   NaN   0.3   0.2
-Wasserstein 10   0.3   0.3   NaN   NaN   NaN
-            5    0.2   0.2   NaN   NaN   NaN
+n               100   200   500   1000
+formulation d                         
+RO          2    NaN   0.3   0.2   0.2
+            10   NaN   0.1   0.2   0.1
+            50   NaN   0.1   0.1   0.1
+SO          2    NaN   0.5   0.1   0.1
+            10   NaN   NaN   0.3   0.2
+            50   NaN   NaN   0.3   0.2
+Wasserstein 10   0.2   0.2   NaN   NaN
+            5    0.1   0.2   NaN   NaN
 ```
 
 
@@ -32,14 +33,14 @@ formulation d
 RO          2    NaN   0.2   NaN   0.3   0.1
             10   NaN   0.2   NaN   0.2   0.2
             50   NaN   0.1   NaN   0.1   0.2
-SAA         5    NaN   0.5   0.4   NaN   NaN
-            10   NaN   0.6   0.3   NaN   NaN
-            20   NaN   NaN   0.3   NaN   NaN
+SAA         5    NaN   NaN   0.4   NaN   NaN
+            10   NaN   NaN   0.3   NaN   NaN
+            20   NaN   NaN   0.4   NaN   NaN
 SO          2    NaN   0.3   NaN   0.1   0.1
-            10   NaN   0.5   NaN   0.2   0.1
+            10   NaN   NaN   NaN   0.2   0.1
             50   NaN   NaN   NaN   0.3   0.2
 Wasserstein 5    0.4   0.4   NaN   NaN   NaN
-            10   0.3   0.4   NaN   NaN   NaN
+            10   0.4   0.4   NaN   NaN   NaN
 ```
 
 Reading: entries are the recommended Phase-1 fraction; `NaN` = no tested n1 met target (data too small). Trends to note: how the recommended fraction moves as N grows (more data -> smaller n1 can suffice) and as D grows (higher dim -> need more Phase-1 data to estimate the path).

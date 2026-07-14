@@ -16,11 +16,11 @@ from gsv import validators as V
 from gsv.config import DGP
 
 TESTS = []
-def test(fn): TESTS.append(fn); return fn
+def _case(fn): TESTS.append(fn); return fn  # not "test*": avoids pytest fixture collision
 
 
 # ------------------------------- RNG ------------------------------- #
-@test
+@_case
 def test_rng_deterministic_independent_order_free():
     a1 = rng.make_stream(2, "cfg", 7).normal(size=8)
     a2 = rng.make_stream(2, "cfg", 7).normal(size=8)
@@ -33,7 +33,7 @@ def test_rng_deterministic_independent_order_free():
 
 
 # ------------------------------ config ----------------------------- #
-@test
+@_case
 def test_config_registry_values():
     leg, pap = config.get_config("legacy_so"), config.get_config("paper_so")
     assert (leg.alpha, leg.beta, leg.n_reps, leg.dgp.kind) == (0.05, 0.10, 100, "half_normal")
@@ -42,7 +42,7 @@ def test_config_registry_values():
     assert "SO_all" == config.get_config("paper_so").benchmark
     assert config.pilot("paper_so", n_reps=5).n_reps == 5
 
-@test
+@_case
 def test_config_validation_rejects_bad():
     from dataclasses import replace
     for bad in [dict(alpha=1.5), dict(beta=0.0), dict(formulation="nope"),
@@ -55,7 +55,7 @@ def test_config_validation_rejects_bad():
 
 
 # ------------------------------ dgp/oracle ------------------------- #
-@test
+@_case
 def test_oracle_closedform_matches_large_sample():
     r = np.random.default_rng(0); d = 6
     g = DGP("gaussian", {"mu_scale": 0.8, "var_diag": 0.4, "corr": 0.15})
@@ -65,14 +65,14 @@ def test_oracle_closedform_matches_large_sample():
     ls = O.large_sample_feasibility(X, D.sample(g, 2_000_000, d, r), b)
     assert np.max(np.abs(cf - ls)) < 3e-3, f"closed-form vs sample too far: {np.max(np.abs(cf-ls))}"
 
-@test
+@_case
 def test_dgp_t_has_target_moments():
     r = np.random.default_rng(1); d = 5
     t = DGP("multivariate_t", {"mu_scale": 0.8, "var_diag": 0.4, "corr": 0.0, "df": 6})
     s = D.sample(t, 2_000_000, d, r)
     assert abs(s.mean() - 0.8) < 1e-2 and abs(s.var(axis=0).mean() - 0.4) < 2e-2
 
-@test
+@_case
 def test_path_oracle():
     s = np.array([1., 2, 3, 4, 5]); obj = np.array([-5., -4, -3, -2, -1]); feas = np.array([.8, .88, .93, .97, .99])
     po = O.path_oracle(s, obj, feas, target=0.90)
@@ -81,7 +81,7 @@ def test_path_oracle():
 
 
 # ------------------------------ metrics ---------------------------- #
-@test
+@_case
 def test_metrics_coverage_and_paired():
     p, lo, hi = M.coverage_ci([1]*95 + [0]*5, level=0.95)
     assert abs(p - 0.95) < 1e-9 and 0.0 <= lo <= p <= hi <= 1.0 and lo > 0.88
@@ -92,7 +92,7 @@ def test_metrics_coverage_and_paired():
 
 
 # --------------------------- validators ---------------------------- #
-@test
+@_case
 def test_select_index_branches():
     # some qualify -> cheapest qualified; folds K, threshold 1-beta on avg feasibility
     alpha, beta, K = 0.10, 0.05, 10
@@ -109,7 +109,7 @@ def test_select_index_branches():
     V_bad = np.full((K, 3), 0.5); V_bad[:3, 1] = 1.0; V_bad[:7, 2] = 1.0  # col2 most often feasible
     assert V._select_index(V_bad, C, alpha, beta, K) == 2
 
-@test
+@_case
 def test_validator_objective_ordering():
     # Paper claim: c'X_UG <= c'X_NGS and <= c'X_UNGS; and c'X_NV <= c'X_UG (nested margins).
     # A guaranteed-feasible ultra-safe candidate (x=0) prevents the argmax fallback.
@@ -131,7 +131,7 @@ def test_validator_objective_ordering():
         assert oUG <= oNGS + tol, f"UG should be <= NGS (seed {seed}): {oUG} vs {oNGS}"
         assert oUG <= oUNGS + tol, f"UG should be <= UNGS (seed {seed}): {oUG} vs {oUNGS}"
 
-@test
+@_case
 def test_gaussian_supremum_deterministic():
     d, p, n2, b = 3, 5, 200, 3.0
     r = np.random.default_rng(0); xx = r.random((d, p))

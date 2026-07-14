@@ -104,8 +104,8 @@
       "mean_oracle_gap": 1.4330490450766618,
       "oracle_gap_se": 0.009326151070097644,
       "mean_rel_oracle_gap": 0.03262381224899613,
-      "mean_excess_s": NaN,
-      "selected_s_std": NaN,
+      "mean_excess_s": null,
+      "selected_s_std": null,
       "failure_rate": 0.0,
       "n_failed": 0
     },

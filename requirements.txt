@@ -1,10 +1,16 @@
-# Core numerics (required by every module)
-numpy
-scipy
-pandas
+# Core numerics
+numpy==2.5.1
+scipy==1.18.0
+pandas==3.0.3
 
-# Optimization backends
-# - gurobipy also requires a valid Gurobi license
-gurobipy      # CCP_RO_ellipsoid, CCP_SO, CCP_SAA, CCP_DRO_wasserstein, knapsack, sca, fast
-cvxpy         # CCP_DRO_moment
-rsome         # mean_risk_portfolio_dro (portfolio_dro.py)
+# Optimization backends (gurobipy also needs a license; ecos/CLARABEL are the OSS fallback)
+gurobipy==13.0.2
+cvxpy==1.9.2
+ecos==2.0.14
+
+# Figures + hygiene
+matplotlib==3.11.0
+threadpoolctl==3.6.0
+
+# Dev / test
+pytest==9.1.1

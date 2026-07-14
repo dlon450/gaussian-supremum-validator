@@ -20,6 +20,7 @@ import sys, json, argparse, time
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from gsv import rng as RNG, portfolio as PF, metrics as M
+from gsv.util import dump_json, dump_jsonl
 
 ALPHA = 0.10          # CVaR tail level
 BETA = 0.05           # target confidence 1-beta = 0.95
@@ -47,15 +48,20 @@ def sample(kind, mu, Sigma, n, d, r, df=6):
     return mu + z / np.sqrt(w / df)[:, None]
 
 
-def run_replication(n, split, d, gamma, dgp, rep):
+def run_replication(n, split, d, gamma, dgp, rep, df=6):
     mu, Sigma = moments(d); c = -mu
     n1 = max(5, round(split * n)); n2 = n - n1
-    r = RNG.make_stream(BASE_SEED, f"portfolio:{dgp}:n{n}:s{split}:d{d}:g{gamma}", rep)
-    data = sample(dgp, mu, Sigma, n, d, r)
-    eval_sample = None if dgp == "gaussian" else sample(dgp, mu, Sigma, 200_000, d, r)
+    r = RNG.make_stream(BASE_SEED, f"portfolio:{dgp}:df{df}:n{n}:s{split}:d{d}:g{gamma}", rep)
+    data = sample(dgp, mu, Sigma, n, d, r, df=df)
+    eval_sample = None if dgp == "gaussian" else sample(dgp, mu, Sigma, 200_000, d, r, df=df)
     perm = r.permutation(n); p1, p2 = data[perm[:n1]], data[perm[n1:]]
 
     xx = PF.dro_cvar_path(RADII, c, gamma, p1, ALPHA, d, n1)      # (d, p)
+    # drop solver-failure candidates (NaN) so a failed LP can't be selected feasible
+    valid = np.all(np.isfinite(xx), axis=0)
+    if not valid.any():
+        return [{"method": "__error__", "error": "all portfolio candidates failed"}]
+    xx = xx[:, valid]
     objectives = c @ xx
     cvar_hat, se, IF = PF.cvar_phase2_stats(xx, p2, ALPHA)
     picks = PF.select_cvar(cvar_hat, se, IF, objectives, gamma=gamma, beta=BETA, n2=n2, rng=r)
@@ -81,18 +87,18 @@ def run_replication(n, split, d, gamma, dgp, rep):
     return recs
 
 
-def run_cell(n, split, d, gamma, dgp, reps, workers):
+def run_cell(n, split, d, gamma, dgp, reps, workers, df=6):
     rows = []
     if workers > 1:
         import concurrent.futures as cf
         with cf.ProcessPoolExecutor(max_workers=workers) as ex:
-            futs = [ex.submit(run_replication, n, split, d, gamma, dgp, rep) for rep in range(reps)]
+            futs = [ex.submit(run_replication, n, split, d, gamma, dgp, rep, df) for rep in range(reps)]
             for f in cf.as_completed(futs):
                 try: rows.extend(f.result())
                 except Exception as e: rows.append({"method": "__error__", "error": str(e)[:200]})
     else:
         for rep in range(reps):
-            rows.extend(run_replication(n, split, d, gamma, dgp, rep))
+            rows.extend(run_replication(n, split, d, gamma, dgp, rep, df))
     summ = {}
     for m in METHODS:
         mr = [r for r in rows if r.get("method") == m]
@@ -120,7 +126,7 @@ def matrix(name):
             cells.append((f"port_n500_d10_g{g}", dict(n=500, split=0.5, d=10, gamma=g, dgp="gaussian")))
     elif name == "tails":
         for df in (3, 4, 6, 10):
-            cells.append((f"port_n500_d10_t{df}", dict(n=500, split=0.5, d=10, gamma=GAMMA, dgp="multivariate_t")))
+            cells.append((f"port_n500_d10_t{df}", dict(n=500, split=0.5, d=10, gamma=GAMMA, dgp="multivariate_t", df=df)))
     else:
         raise SystemExit(f"unknown matrix {name!r}")
     return cells
@@ -139,10 +145,8 @@ def main():
         t0 = time.time()
         rows, summ = run_cell(reps=a.reps, workers=a.workers, **kw)
         dt = time.time() - t0
-        with open(os.path.join(outdir, f"{key}_raw.jsonl"), "w") as f:
-            for r in rows: f.write(json.dumps(r) + "\n")
-        with open(sp, "w") as f:
-            json.dump({"key": key, **kw, "reps": a.reps, "elapsed_s": dt, "summaries": summ}, f, indent=2)
+        dump_jsonl(rows, os.path.join(outdir, f"{key}_raw.jsonl"))
+        dump_json({"key": key, **kw, "reps": a.reps, "elapsed_s": dt, "summaries": summ}, sp)
         cov = {m: round(summ[m]["coverage"], 3) for m in METHODS if m in summ}
         ret = {m: round(summ[m]["mean_return"], 3) for m in METHODS if m in summ}
         print(f"[done] ({i+1}/{len(cells)}) {key} {dt:.1f}s err={summ['_n_replication_errors']} cov={cov} ret={ret}", flush=True)

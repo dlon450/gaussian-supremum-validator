@@ -1,0 +1,29 @@
+MILP-cap sensitivity: SAA two-phase, n=300 d=10 split=0.5; coverage stable vs cap?
+cap=5s: 21s  UG cov=0.957 NGS=0.98 UNGS=0.983 | UG obj=-7.501 NGS obj=-7.434
+cap=30s: 21s  UG cov=0.957 NGS=0.98 UNGS=0.983 | UG obj=-7.501 NGS obj=-7.434
+--- GSV_MILP_TIMELIMIT=30 ---
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+Restricted license - for non-production use only - expires 2027-11-29
+  elapsed=2937s  UG=0.873 NGS=0.913 UNGS=0.96 CV10=0.987 BS10=1.0

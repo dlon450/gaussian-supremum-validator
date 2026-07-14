@@ -102,7 +102,7 @@ def saa(para, c, b, data, alpha, d, n):
         cons = [x >= 0, x <= 1, data @ x <= b + M * (1 - z), cp.sum(z) >= nc]
         prob = cp.Problem(cp.Minimize(c @ x), cons)
         prob.solve(solver=cp.HIGHS)
-        prev = x.value if x.value is not None else np.zeros(d)
+        prev = x.value if x.value is not None else np.full(d, np.nan)
         sols.append(prev)
     return _finish(sols, scalar)
 
@@ -126,5 +126,5 @@ def dro_wasserstein(para, c, b, data, alpha, d, n):
                 v >= x]                       # ||x||_* (l_inf here) <= v via v >= x_i (x>=0)
         prob = cp.Problem(cp.Minimize(c @ x), cons)
         prob.solve(solver=cp.HIGHS)
-        sols.append(x.value if x.value is not None else np.zeros(d))
+        sols.append(x.value if x.value is not None else np.full(d, np.nan))
     return _finish(sols, scalar)

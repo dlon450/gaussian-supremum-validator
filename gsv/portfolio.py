@@ -55,7 +55,7 @@ def _cvar_reformulation(s, c, gamma, data, alpha, d, n):
             raise cp.error.SolverError
     except Exception:
         prob.solve(solver=cp.CLARABEL)
-    return x.value if x.value is not None else np.full(d, 1.0 / d)
+    return x.value if x.value is not None else np.full(d, np.nan)
 
 
 def dro_cvar_path(s_values, c, gamma, data, alpha, d, n):

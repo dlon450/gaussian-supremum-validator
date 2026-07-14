@@ -10,7 +10,7 @@
   "dgp_params": null,
   "folds": null,
   "mesh_p": null,
-  "elapsed_s": 18.61808967590332,
+  "elapsed_s": 7.117809534072876,
   "summaries": {
     "NV": {
       "method": "NV",
@@ -22,15 +22,16 @@
       "coverage_gap": 0.050000000000000044,
       "meets_target": true,
       "significantly_below": false,
-      "mean_obj": -3.330432159014098,
-      "obj_se": 0.005263581697299108,
-      "mean_oracle_gap": -1.3322676295501878e-17,
-      "oracle_gap_se": 1.3143479483832885e-17,
-      "mean_rel_oracle_gap": -3.9523638264454375e-18,
+      "mean_obj": -6.281356101870184,
+      "obj_se": 0.010657990386968302,
+      "mean_oracle_gap": 1.9539925233402754e-17,
+      "oracle_gap_se": 3.577360130322623e-17,
+      "mean_rel_oracle_gap": 3.341784171035262e-18,
       "mean_excess_s": 0.0,
-      "selected_s_std": 2.222669831529484e-16,
+      "selected_s_std": 0.0,
       "failure_rate": 0.0,
-      "n_failed": 0
+      "n_failed": 0,
+      "n_attempted": 500
     },
     "UG": {
       "method": "UG",
@@ -42,15 +43,16 @@
       "coverage_gap": 0.050000000000000044,
       "meets_target": true,
       "significantly_below": false,
-      "mean_obj": -3.330432159014098,
-      "obj_se": 0.005263581697299108,
-      "mean_oracle_gap": -1.3322676295501878e-17,
-      "oracle_gap_se": 1.3143479483832885e-17,
-      "mean_rel_oracle_gap": -3.9523638264454375e-18,
+      "mean_obj": -6.281356101870184,
+      "obj_se": 0.010657990386968302,
+      "mean_oracle_gap": 1.9539925233402754e-17,
+      "oracle_gap_se": 3.577360130322623e-17,
+      "mean_rel_oracle_gap": 3.341784171035262e-18,
       "mean_excess_s": 0.0,
-      "selected_s_std": 2.222669831529484e-16,
+      "selected_s_std": 0.0,
       "failure_rate": 0.0,
-      "n_failed": 0
+      "n_failed": 0,
+      "n_attempted": 500
     },
     "NGS": {
       "method": "NGS",
@@ -62,15 +64,16 @@
       "coverage_gap": 0.050000000000000044,
       "meets_target": true,
       "significantly_below": false,
-      "mean_obj": -3.330432159014098,
-      "obj_se": 0.005263581697299108,
-      "mean_oracle_gap": -1.3322676295501878e-17,
-      "oracle_gap_se": 1.3143479483832885e-17,
-      "mean_rel_oracle_gap": -3.9523638264454375e-18,
+      "mean_obj": -6.281356101870184,
+      "obj_se": 0.010657990386968302,
+      "mean_oracle_gap": 1.9539925233402754e-17,
+      "oracle_gap_se": 3.577360130322623e-17,
+      "mean_rel_oracle_gap": 3.341784171035262e-18,
       "mean_excess_s": 0.0,
-      "selected_s_std": 2.222669831529484e-16,
+      "selected_s_std": 0.0,
       "failure_rate": 0.0,
-      "n_failed": 0
+      "n_failed": 0,
+      "n_attempted": 500
     },
     "UNGS": {
       "method": "UNGS",
@@ -82,15 +85,16 @@
       "coverage_gap": 0.050000000000000044,
       "meets_target": true,
       "significantly_below": false,
-      "mean_obj": -3.330432159014098,
-      "obj_se": 0.005263581697299108,
-      "mean_oracle_gap": -1.3322676295501878e-17,
-      "oracle_gap_se": 1.3143479483832885e-17,
-      "mean_rel_oracle_gap": -3.9523638264454375e-18,
+      "mean_obj": -6.281356101870184,
+      "obj_se": 0.010657990386968302,
+      "mean_oracle_gap": 1.9539925233402754e-17,
+      "oracle_gap_se": 3.577360130322623e-17,
+      "mean_rel_oracle_gap": 3.341784171035262e-18,
       "mean_excess_s": 0.0,
-      "selected_s_std": 2.222669831529484e-16,
+      "selected_s_std": 0.0,
       "failure_rate": 0.0,
-      "n_failed": 0
+      "n_failed": 0,
+      "n_attempted": 500
     },
     "benchmark": {
       "method": "benchmark",
@@ -102,16 +106,28 @@
       "coverage_gap": 0.050000000000000044,
       "meets_target": true,
       "significantly_below": false,
-      "mean_obj": -1.5756995532958975,
-      "obj_se": 0.0021086011006398175,
-      "mean_oracle_gap": 1.7547326057182002,
-      "oracle_gap_se": 0.004583356897073313,
-      "mean_rel_oracle_gap": 0.5265392268488458,
-      "mean_excess_s": NaN,
-      "selected_s_std": NaN,
+      "mean_obj": -3.198053078885211,
+      "obj_se": 0.00314340297476819,
+      "mean_oracle_gap": 3.083303022984973,
+      "oracle_gap_se": 0.009975863101417844,
+      "mean_rel_oracle_gap": 0.49028874543130335,
+      "mean_excess_s": null,
+      "selected_s_std": null,
       "failure_rate": 0.0,
-      "n_failed": 0
+      "n_failed": 0,
+      "n_attempted": 500
     },
     "_n_replication_errors": 0
+  },
+  "_provenance": {
+    "git_commit": "d34ff2286f94f415327062e8df3721cd49ec3996",
+    "git_dirty": true,
+    "versions": {
+      "numpy": "2.5.1",
+      "scipy": "1.18.0",
+      "cvxpy": "1.9.2",
+      "gurobipy": "13.0.2"
+    },
+    "timestamp": null
   }
 }

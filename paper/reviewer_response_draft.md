@@ -291,21 +291,26 @@ Prompted by a completeness check, we (a) wired the **moment-based DRO** formulat
 pipeline and (b) pushed every formulation to high dimension.
 
 ## Moment-based DRO (SDP), N x D grid + n1/tolerance/tail slices
-Reproduces and extends the paper's Table (d=10) to d=2..30, N=100..500. The
-validators select the tightest radius s≈0 (moments as equalities), are 100%
-feasible everywhere, and beat the chi2-quantile benchmark by a margin that GROWS
-with dimension:
+[CORRECTED: the DRO radius now uses the delta-method scaling rho=sqrt(chi2_{0.95,q}/n)
+matching legacy DRO2.m; the earlier draft omitted the 1/sqrt(n) and excluded s=0.]
+Extends the paper's Table (d=10) to d=2..30, N=100..500. This is a *degeneracy*
+case (as the paper's Section 6.2 states): the estimated-moments-as-equalities
+solution (s=0) is already statistically feasible, so ALL validators — including the
+naive one — select it and are 100% feasible. Its interest is that it dominates the
+conventional chi2-quantile benchmark by a margin that GROWS with dimension, because
+the chi2 confidence region over q = d + d(d+1)/2 moment parameters becomes
+increasingly conservative as d grows:
 
-| d | validators (UG=NGS=UNGS) obj | chi2 benchmark obj | advantage |
-|---|---|---|---|
-| 2 | -0.75 | -0.44 | 0.31 |
-| 10 | -3.33 | -1.57 | 1.76 |
-| 20 | -5.22 | -2.60 | 2.62 |
-| 30 | -6.98 | -3.98 | 3.00 |
+| d | validators (s≈0) obj | chi2 benchmark obj | advantage | all coverage |
+|---|---|---|---|---|
+| 2 | -0.81 | -0.73 | 0.08 | 1.00 |
+| 10 | -6.25 | -3.20 | 3.05 | 1.00 |
+| 20 | -14.1 | -5.4 | 8.6 | 1.00 |
+| 30 | -22.6 | -6.8 | 15.7 | 1.00 |
 
-(paper d=10 table: validators -2.73 vs benchmark -1.83 — same qualitative result.)
-This shows the conventional chi2 moment-set size is very conservative, exactly the
-paper's Section 6.2 point.
+This quantifies how over-conservative the standard moment-set sizing is (the paper's
+Section 6.2 remark), rather than demonstrating validator necessity (the naive picker
+suffices here because the aggressive solution is already safe).
 
 ## High-dimension coverage for every formulation
 - RO, SO: swept to **d=500** (RO dimension-free; SO needs N∝D).
@@ -360,8 +365,12 @@ problem class:
 - **UNGS safest, UG best return** — same frontier as the chance-constraint problem:
   UNGS meets target at the smallest N; UG gives the highest return among the valid
   validators.
-- **Robust to heavy tails:** under multivariate-t returns UG/NGS/UNGS hold ~0.96
-  down to df=3, while NV stays at 0.59.
+- **Heavy tails (CORRECTED — df is now actually varied; the earlier run used df=6
+  throughout):** coverage degrades modestly as tails get heavier. At df=3 the
+  proposed validators drop to UG 0.90, NGS 0.93, UNGS 0.94 (UNGS most robust,
+  slightly below the 0.95 target); by df=10 NGS/UNGS recover to 0.95. NV stays
+  ~0.57 and the benchmark ~0.12 throughout. So the validators are *reasonably*
+  robust but not immune to the heaviest tails.
 - **Risk-threshold (gamma) sweep:** validators meet target across gamma in
   {0.12..0.28}; benchmark/NV fail throughout.
 
@@ -373,3 +382,55 @@ from d>=5; gamma should scale with d if very small d is of interest.
 This demonstrates the framework is not specific to chance constraints — it applies
 to general stochastic constraints (here CVaR), which strengthens the paper's
 generality claim.
+
+---
+
+# Validity fixes and robustness checks (audit response)
+
+An independent audit found two invalid result families and several traceability
+gaps. All are fixed; the study was re-run where affected.
+
+## Corrections applied
+1. **Portfolio heavy-tail (was invalid):** the df parameter was never passed, so all
+   four cells used df=6. Fixed (df threaded + in the RNG key) and re-run. Corrected
+   result: coverage *degrades* with heavier tails — df=3 gives UG 0.90 / NGS 0.93 /
+   UNGS 0.94 (UNGS most robust, slightly below 0.95), recovering by df=10. The
+   earlier "robust down to df=3" claim is withdrawn.
+2. **Moment-DRO radius (was mis-scaled):** the radius omitted the 1/sqrt(n) factor
+   (legacy DRO2.m uses sqrt(chi2/N)) and the path excluded s=0. Fixed and all 30
+   cells re-run; reframed honestly as the paper's Section 6.2 *degeneracy* (s=0 is
+   already feasible; the naive picker suffices), with the chi2-benchmark gap growing
+   with d because the chi2 region over ~d^2/2 moment parameters is increasingly
+   conservative.
+3. **Failures were invisible:** failed rows were dropped while failure_rate stayed 0,
+   and a non-finite benchmark was silently skipped (one FAST cell had 583/1000).
+   Now: solver-failure candidates become NaN and are masked (so a failed x=0/equal-
+   weight solve can no longer be counted feasible), non-finite benchmarks are
+   recorded as failures, and failure_rate = failures/(successes+failures) with
+   n_attempted reported.
+4. **Traceability:** all result files are now strict JSON (NaN->null; 932 legacy
+   files sanitized), carry a _provenance block (git commit, package versions), the
+   requirements are pinned, pytest collects and passes 10/10 (decorator renamed;
+   gurobipy import guarded so the OSS backend loads without a license), and 0
+   runner-defined cells are missing.
+5. **Selection optimism:** the recommended n1 is now chosen by a CI-aware criterion
+   (Wilson lower bound >= 0.95), and confirmed on an INDEPENDENT RNG stream.
+
+## Independent-stream confirmation (out-of-sample coverage of the recommended split)
+| formulation | split | UG in/out | NGS in/out | UNGS in/out |
+|---|---|---|---|---|
+| SO  | 0.5 | 0.972 / 0.952 | 0.994 / 0.990 | 0.998 / 1.000 |
+| RO  | 0.3 | 0.996 / 0.992 | 1.000 / 0.998 | 0.996 / 0.992 |
+| SAA | 0.5 | 0.926 / 0.914 | 0.988 / 0.988 | 0.988 / 0.992 |
+
+NGS/UNGS hold >=0.95 out-of-sample; UG (least conservative) is borderline — so the
+recommendation is genuine, not selection optimism, and NGS/UNGS are the safe choice.
+
+## Sensitivity (all stable)
+- **Mesh size p** (RO d=10 n=500): coverage 0.99/0.98/0.96 (UG) and 0.99/0.99/1.00
+  (NGS) at p=25/50/100; objective improves marginally with finer p. The p=25 (code)
+  vs p=50 (text) discrepancy does not change conclusions.
+- **GS sim_num**: qhat = 2.168 +/- 0.05 (sim=2000), std ~1/sqrt(sim); 2000 draws
+  suffice.
+- **Negative correlation (corr=-0.08)** generality: coverage holds (RO UG 0.99,
+  SO 0.97, SAA NGS 0.99) — comparable to corr=0.

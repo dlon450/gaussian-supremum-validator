@@ -31,10 +31,17 @@ and ``rsome`` for the portfolio solver) are imported lazily so that the
 Gurobi-only solvers can be used without them installed.
 """
 
+import os
 import numpy as np
 from scipy.linalg import sqrtm
 from scipy.sparse import eye
-from gurobipy import Model, GRB, quicksum, LinExpr
+
+_MILP_TL = float(os.environ.get("GSV_MILP_TIMELIMIT", "5"))     # MILP wall-clock cap (s)
+_MILP_GAP = float(os.environ.get("GSV_MILP_GAP", "1e-2"))       # MILP relative gap
+try:                                            # Gurobi is optional: the OSS backend
+    from gurobipy import Model, GRB, quicksum, LinExpr   # (gsv.solvers_oss) covers the
+except Exception:                               # convex formulations without it.
+    Model = GRB = quicksum = LinExpr = None
 
 
 def CCP_DRO_moment(para, c, b, data, alpha, d, n):
@@ -111,7 +118,7 @@ def CCP_DRO_moment(para, c, b, data, alpha, d, n):
 
         prob = cp.Problem(objective, constraints)
         prob.solve()
-        solution[:, k] = x_dro.value
+        solution[:, k] = x_dro.value if x_dro.value is not None else np.nan
 
     return solution if mesh_size > 1 else solution[:, 0]
 
@@ -207,8 +214,8 @@ def CCP_SAA(para, c, b, data, alpha, d, n):
             model.Params.OutputFlag = 0
             model.Params.Threads = 1    # single-threaded: avoid oversubscription
             model.Params.Seed = 0       # deterministic MILP search (reproducible across runs)
-            model.Params.MIPGap = 1e-2  # near-optimal is enough for the statistics
-            model.Params.TimeLimit = 5  # cap hard big-M instances (returns best incumbent)
+            model.Params.MIPGap = _MILP_GAP
+            model.Params.TimeLimit = _MILP_TL
 
             x_SAA = model.addVars(d, lb=0, ub=1, vtype=GRB.CONTINUOUS, name="x_SAA")
             z = model.addVars(n, vtype=GRB.BINARY, name="z")
@@ -222,7 +229,10 @@ def CCP_SAA(para, c, b, data, alpha, d, n):
             try:
                 solution[:, k] = np.array([x_SAA[j].X for j in range(d)])
             except AttributeError:
-                continue
+                # solver returned no incumbent: mark this candidate invalid (NaN) so it
+                # is masked out downstream, rather than silently left as x=0 (which is
+                # trivially chance-feasible and would inflate coverage).
+                solution[:, k] = np.nan
 
     return solution if mesh_size > 1 else solution[:, 0]
 
@@ -248,8 +258,8 @@ def CCP_DRO_wasserstein(para, c, b, data, alpha, d, n):
         model.Params.OutputFlag = 0
         model.Params.Threads = 1        # single-threaded: avoid oversubscription
         model.Params.Seed = 0           # deterministic MILP search (reproducible across runs)
-        model.Params.MIPGap = 1e-2      # near-optimal is enough for the statistics
-        model.Params.TimeLimit = 5      # cap hard big-M instances (returns best incumbent)
+        model.Params.MIPGap = _MILP_GAP
+        model.Params.TimeLimit = _MILP_TL
 
         y = {}
         z = {}
@@ -279,7 +289,7 @@ def CCP_DRO_wasserstein(para, c, b, data, alpha, d, n):
         if model.SolCount > 0:
             solution[:, k] = np.array([x[j].x for j in range(d)])
         else:
-            solution[:, k] = np.zeros(d)
+            solution[:, k] = np.nan
 
     return solution[:, 0] if scalar else solution
 

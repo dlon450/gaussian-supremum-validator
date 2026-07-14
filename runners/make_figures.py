@@ -31,6 +31,8 @@ def load():
     for f in glob.glob(os.path.join(EXP, "*", "*_summary.json")):
         j = json.load(open(f))
         matrix = os.path.basename(os.path.dirname(f))
+        if "config" not in j or "summaries" not in j:      # skip portfolio_* (own schema)
+            continue
         for m, s in j["summaries"].items():
             if not isinstance(s, dict) or "coverage" not in s:
                 continue

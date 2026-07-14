@@ -10,7 +10,7 @@
   "dgp_params": null,
   "folds": null,
   "mesh_p": null,
-  "elapsed_s": 3.9567387104034424,
+  "elapsed_s": 3.383335828781128,
   "summaries": {
     "NV": {
       "method": "NV",
@@ -22,15 +22,16 @@
       "coverage_gap": 0.050000000000000044,
       "meets_target": true,
       "significantly_below": false,
-      "mean_obj": -0.7378841482455086,
-      "obj_se": 0.0009503342144444513,
+      "mean_obj": -0.8059346432021594,
+      "obj_se": 0.0010377917680753231,
       "mean_oracle_gap": 0.0,
       "oracle_gap_se": 0.0,
       "mean_rel_oracle_gap": 0.0,
       "mean_excess_s": 0.0,
       "selected_s_std": 0.0,
       "failure_rate": 0.0,
-      "n_failed": 0
+      "n_failed": 0,
+      "n_attempted": 500
     },
     "UG": {
       "method": "UG",
@@ -42,15 +43,16 @@
       "coverage_gap": 0.050000000000000044,
       "meets_target": true,
       "significantly_below": false,
-      "mean_obj": -0.7378841482455086,
-      "obj_se": 0.0009503342144444513,
+      "mean_obj": -0.8059346432021594,
+      "obj_se": 0.0010377917680753231,
       "mean_oracle_gap": 0.0,
       "oracle_gap_se": 0.0,
       "mean_rel_oracle_gap": 0.0,
       "mean_excess_s": 0.0,
       "selected_s_std": 0.0,
       "failure_rate": 0.0,
-      "n_failed": 0
+      "n_failed": 0,
+      "n_attempted": 500
     },
     "NGS": {
       "method": "NGS",
@@ -62,15 +64,16 @@
       "coverage_gap": 0.050000000000000044,
       "meets_target": true,
       "significantly_below": false,
-      "mean_obj": -0.7378841482455086,
-      "obj_se": 0.0009503342144444513,
+      "mean_obj": -0.8059346432021594,
+      "obj_se": 0.0010377917680753231,
       "mean_oracle_gap": 0.0,
       "oracle_gap_se": 0.0,
       "mean_rel_oracle_gap": 0.0,
       "mean_excess_s": 0.0,
       "selected_s_std": 0.0,
       "failure_rate": 0.0,
-      "n_failed": 0
+      "n_failed": 0,
+      "n_attempted": 500
     },
     "UNGS": {
       "method": "UNGS",
@@ -82,15 +85,16 @@
       "coverage_gap": 0.050000000000000044,
       "meets_target": true,
       "significantly_below": false,
-      "mean_obj": -0.7378841482455086,
-      "obj_se": 0.0009503342144444513,
+      "mean_obj": -0.8059346432021594,
+      "obj_se": 0.0010377917680753231,
       "mean_oracle_gap": 0.0,
       "oracle_gap_se": 0.0,
       "mean_rel_oracle_gap": 0.0,
       "mean_excess_s": 0.0,
       "selected_s_std": 0.0,
       "failure_rate": 0.0,
-      "n_failed": 0
+      "n_failed": 0,
+      "n_attempted": 500
     },
     "benchmark": {
       "method": "benchmark",
@@ -102,16 +106,28 @@
       "coverage_gap": 0.050000000000000044,
       "meets_target": true,
       "significantly_below": false,
-      "mean_obj": -0.4313497444661273,
-      "obj_se": 0.0005836249350989213,
-      "mean_oracle_gap": 0.30653440377938135,
-      "oracle_gap_se": 0.0007838713174969207,
-      "mean_rel_oracle_gap": 0.4152294551549575,
-      "mean_excess_s": NaN,
-      "selected_s_std": NaN,
+      "mean_obj": -0.7518390643293568,
+      "obj_se": 0.0006949830641463716,
+      "mean_oracle_gap": 0.054095578872802565,
+      "oracle_gap_se": 0.0007713731525034389,
+      "mean_rel_oracle_gap": 0.06672191536417812,
+      "mean_excess_s": null,
+      "selected_s_std": null,
       "failure_rate": 0.0,
-      "n_failed": 0
+      "n_failed": 0,
+      "n_attempted": 500
     },
     "_n_replication_errors": 0
+  },
+  "_provenance": {
+    "git_commit": "d34ff2286f94f415327062e8df3721cd49ec3996",
+    "git_dirty": true,
+    "versions": {
+      "numpy": "2.5.1",
+      "scipy": "1.18.0",
+      "cvxpy": "1.9.2",
+      "gurobipy": "13.0.2"
+    },
+    "timestamp": null
   }
 }

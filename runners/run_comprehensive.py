@@ -23,6 +23,7 @@ for _v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VECLIB
 import sys, json, argparse, time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from gsv import experiment as E
+from gsv.util import dump_json, dump_jsonl
 
 SPLITS = [round(i / 10, 1) for i in range(1, 10)]     # 0.1 .. 0.9
 FOLDS = (3, 5, 10)
@@ -107,13 +108,10 @@ def main():
             print(f"[FAIL] ({i+1}/{len(cells)}) {key}  {type(e).__name__}: {str(e)[:120]}", flush=True)
             continue
         dt = time.time() - t0
-        with open(os.path.join(outdir, f"{key}_raw.jsonl"), "w") as f:
-            for r in rows:
-                f.write(json.dumps(r) + "\n")
-        with open(summ_path, "w") as f:
-            json.dump({"config": cc["cfg"], "n": cc["n"], "split": cc["split"], "d": cc["d"], "reps": a.reps,
-                       "mesh_p": cc["mesh_p"], "include_existing": cc["include_existing"], "folds": cc["folds"],
-                       "elapsed_s": dt, "summaries": summ}, f, indent=2)
+        dump_jsonl(rows, os.path.join(outdir, f"{key}_raw.jsonl"))
+        dump_json({"config": cc["cfg"], "n": cc["n"], "split": cc["split"], "d": cc["d"], "reps": a.reps,
+                   "mesh_p": cc["mesh_p"], "include_existing": cc["include_existing"], "folds": cc["folds"],
+                   "elapsed_s": dt, "summaries": summ}, summ_path)
         cov = {m: round(summ[m]["coverage"], 3) for m in summ
                if isinstance(summ[m], dict) and "coverage" in summ[m]}
         errs = summ.get("_n_replication_errors", 0)

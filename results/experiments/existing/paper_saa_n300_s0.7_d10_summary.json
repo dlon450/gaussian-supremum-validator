@@ -102,8 +102,8 @@
       "mean_oracle_gap": 0.48141837712278157,
       "oracle_gap_se": 0.016394136032485976,
       "mean_rel_oracle_gap": 0.06103099862139145,
-      "mean_excess_s": NaN,
-      "selected_s_std": NaN,
+      "mean_excess_s": null,
+      "selected_s_std": null,
       "failure_rate": 0.0,
       "n_failed": 0
     },
@@ -122,8 +122,8 @@
       "mean_oracle_gap": 0.5867022691752316,
       "oracle_gap_se": 0.015929816826183572,
       "mean_rel_oracle_gap": 0.07438122574177364,
-      "mean_excess_s": NaN,
-      "selected_s_std": NaN,
+      "mean_excess_s": null,
+      "selected_s_std": null,
       "failure_rate": 0.0,
       "n_failed": 0
     },
@@ -142,8 +142,8 @@
       "mean_oracle_gap": 0.7045368698385557,
       "oracle_gap_se": 0.020528844851743954,
       "mean_rel_oracle_gap": 0.0893176525845246,
-      "mean_excess_s": NaN,
-      "selected_s_std": NaN,
+      "mean_excess_s": null,
+      "selected_s_std": null,
       "failure_rate": 0.0,
       "n_failed": 0
     },

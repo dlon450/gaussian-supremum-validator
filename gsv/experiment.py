@@ -55,7 +55,7 @@ def V_solver_wass(para, c, b, data, alpha, d, n):
 
 
 def run_replication(cfg_name, n, split, d, rep, include_existing=False, folds=None, mesh_p=None,
-                    alpha=None, beta=None, dgp_params=None):
+                    alpha=None, beta=None, dgp_params=None, seed_offset=0):
     """Execute one replication; return list of raw record dicts (one per method).
 
     ``folds`` (tuple of ints, e.g. (3, 5, 10)) sweeps the CV/bootstrap/sectioning
@@ -89,7 +89,7 @@ def run_replication(cfg_name, n, split, d, rep, include_existing=False, folds=No
     # override tag keeps swept settings on distinct RNG streams (reproducible, independent)
     otag = f":a{alpha}:be{beta}:{cfg.dgp.kind}:{sorted(cfg.dgp.params.items())}" if _overridden else ""
     key = f"{cfg_name}:n{n}:s{split}:d{d}{otag}"
-    r = RNG.make_stream(cfg.base_seed, key, rep)
+    r = RNG.make_stream(cfg.base_seed + seed_offset, key, rep)
 
     def true_feas(x):
         if cfg.dgp.kind == "gaussian":
@@ -107,6 +107,14 @@ def run_replication(cfg_name, n, split, d, rep, include_existing=False, folds=No
 
       # ---- two-phase validators + benchmark ----
       xx, s_values = P.build_path(cfg.formulation, phase1, c, b, alpha, d, n1, cfg.mesh, rng=r)
+      # Drop solver-failure candidates (NaN columns) so they cannot be selected as
+      # spuriously feasible (e.g. a failed SAA solve). If every candidate failed,
+      # the whole replication is a failure.
+      valid = np.all(np.isfinite(xx), axis=0)
+      n_dropped = int((~valid).sum())
+      if not valid.any():
+          raise RuntimeError("all solution-path candidates failed to solve")
+      xx = xx[:, valid]; s_values = np.asarray(s_values)[valid]
       objectives = c @ xx
       P_hat, sigma_hat, Sigma_hat = SEL.phase2_stats(xx, phase2, b)
       picks = SEL.select_all(P_hat, sigma_hat, Sigma_hat, objectives, alpha=alpha, beta=beta, n2=n2, rng=r)
@@ -119,7 +127,7 @@ def run_replication(cfg_name, n, split, d, rep, include_existing=False, folds=No
           rec = {"method": method, "config": cfg_name, "formulation": cfg.formulation,
                  "n": n, "n1": n1, "n2": n2, "d": d, "split": split, "dgp": cfg.dgp.kind, "rep": rep,
                  "feasible": 1.0 if feas >= 1 - alpha else 0.0, "true_feas": feas, "objective": obj,
-                 "selected_s": s_sel}
+                 "selected_s": s_sel, "n_candidates_dropped": n_dropped}
           if po["any_feasible"]:
               rec["oracle_gap"] = obj - po["best_obj"]
               rec["rel_oracle_gap"] = (obj - po["best_obj"]) / (abs(po["best_obj"]) or 1.0)
@@ -135,6 +143,12 @@ def run_replication(cfg_name, n, split, d, rep, include_existing=False, folds=No
                                        mu_true=mu_true, sigma_true=sigma_true, full_data=data, n1=n1)
           if bench is not None and np.all(np.isfinite(bench)):
               record("benchmark", np.asarray(bench, float), np.nan)
+          else:
+              # do NOT silently drop: a non-finite/None benchmark is a solver failure,
+              # recorded so it shows up in failure_rate (was previously invisible).
+              records.append({"method": "benchmark", "config": cfg_name, "formulation": cfg.formulation,
+                              "n": n, "d": d, "split": split, "rep": rep, "failed": 1.0,
+                              "error": "benchmark solver returned None/non-finite"})
 
       # ---- existing schemes (CV / bootstrap / sectioning) on simple-mesh formulations ----
       if include_existing and cfg.formulation in EXISTING_FORMULATIONS:
@@ -178,14 +192,14 @@ def run_replication(cfg_name, n, split, d, rep, include_existing=False, folds=No
 
 
 def run_cell(cfg_name, n, split, d, reps, include_existing=False, workers=1, folds=None, mesh_p=None,
-             alpha=None, beta=None, dgp_params=None):
+             alpha=None, beta=None, dgp_params=None, seed_offset=0):
     """Run ``reps`` replications of one cell; return (raw_records, summaries_dict).
 
     ``folds``/``mesh_p``/``alpha``/``beta``/``dgp_params`` are forwarded to
     :func:`run_replication` (fold-count sweep; path grid-size; tolerance/confidence/
     DGP overrides)."""
     all_rows = []
-    args = (include_existing, folds, mesh_p, alpha, beta, dgp_params)
+    args = (include_existing, folds, mesh_p, alpha, beta, dgp_params, seed_offset)
     if workers and workers > 1:
         import concurrent.futures as cf
         with cf.ProcessPoolExecutor(max_workers=workers) as ex:
@@ -212,13 +226,17 @@ def run_cell(cfg_name, n, split, d, reps, include_existing=False, workers=1, fol
         if not rows:
             summaries[m] = {"method": m, "n_reps": 0, "n_failed": sum(1 for r in method_rows if r["method"] == m)}
             continue
+        n_failed = sum(1 for r in method_rows if r["method"] == m and r.get("failed"))
+        # failure_rate = failures / (successes + failures), so it is no longer silently 0
+        fr = n_failed / (len(rows) + n_failed) if (len(rows) + n_failed) else 0.0
         s = M.summarize_method(
             m, feasible_flags=[r["feasible"] for r in rows], objectives=[r["objective"] for r in rows],
             target=target, oracle_gaps=[r.get("oracle_gap", np.nan) for r in rows],
             rel_oracle_gaps=[r.get("rel_oracle_gap", np.nan) for r in rows],
             excess_s=[r.get("excess_s", np.nan) for r in rows],
-            selected_s=[r.get("selected_s", np.nan) for r in rows]).to_dict()
-        s["n_failed"] = sum(1 for r in method_rows if r["method"] == m and r.get("failed"))
+            selected_s=[r.get("selected_s", np.nan) for r in rows], failures=[fr]).to_dict()
+        s["n_failed"] = n_failed
+        s["n_attempted"] = len(rows) + n_failed
         summaries[m] = s
     summaries["_n_replication_errors"] = n_errors
     return all_rows, summaries

@@ -44,25 +44,32 @@ def analyze_budget(md):
         return
     df.to_csv(os.path.join(OUTA, "comp_budget.csv"), index=False)
     md.append("## Best Phase-1 fraction n1/n vs N and D (budget matrix)\n")
-    md.append("For each (formulation, N, D) and validator, the FEASIBLE BAND is the set of "
-              "n1 fractions with coverage >= 0.95; the RECOMMENDED n1 is the feasible fraction "
-              "with the lowest (best) objective (ties -> smallest n1).\n")
-    recs = []
+    md.append("CI-AWARE criterion: a fraction is FEASIBLE only if its 95% Wilson lower bound "
+              "clears 0.95 (coverage_lo >= 0.95), not merely the point estimate — this avoids the "
+              "selection optimism the audit flagged. The RECOMMENDED n1 is the CI-feasible fraction "
+              "with the best objective (ties -> smallest n1). `borderline` counts fractions whose "
+              "point coverage >= 0.95 but whose CI still crosses 0.95.\n")
+    recs = []; n_border = 0
     for cfg in sorted(df.config.unique()):
         for method in ["UG", "NGS", "UNGS"]:
             sub = df[(df.config == cfg) & (df.method == method)]
             for (n, d), g in sub.groupby(["n", "d"]):
                 g = g.sort_values("split")
-                feas = g[g.coverage >= TARGET]
+                feas = g[g.coverage_lo >= TARGET]                  # CI-strong feasibility
+                point_only = g[(g.coverage >= TARGET) & (g.coverage_lo < TARGET)]
+                n_border += len(point_only)
                 band = sorted(feas.split.tolist())
                 if not feas.empty:
                     best = feas.sort_values(["mean_obj", "split"]).iloc[0]
-                    rec_s = float(best.split); rec_cov = float(best.coverage)
+                    rec_s = float(best.split); rec_cov = float(best.coverage); rec_lo = float(best.coverage_lo)
                 else:
-                    rec_s = np.nan; rec_cov = float(g.coverage.max())
+                    rec_s = np.nan; rec_cov = float(g.coverage.max()); rec_lo = float(g.coverage_lo.max())
                 recs.append({"formulation": FORM.get(cfg, cfg), "method": method, "n": n, "d": d,
-                             "feasible_band": ",".join(f"{int(s*100)}%" for s in band) or "none",
-                             "n_feasible": len(band), "recommended_n1": rec_s, "cov_at_rec": rec_cov})
+                             "feasible_band_ci": ",".join(f"{int(s*100)}%" for s in band) or "none",
+                             "n_feasible_ci": len(band), "recommended_n1": rec_s,
+                             "cov_at_rec": rec_cov, "cov_lo_at_rec": rec_lo,
+                             "n_point_only_borderline": len(point_only)})
+    md.append(f"Borderline (point>=0.95 but CI crosses) across budget cells: {n_border}.\n")
     rec_df = pd.DataFrame(recs)
     rec_df.to_csv(os.path.join(OUTA, "comp_budget_best_n1.csv"), index=False)
     # trend summary for UG and NGS
